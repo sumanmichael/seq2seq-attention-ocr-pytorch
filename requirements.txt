@@ -4,5 +4,6 @@ Pillow
 torch
 torchvision
 jsonargparse[signatures]
+pytorch-lightning
 torch_tb_profiler
 tensorboard-plugin-profile
