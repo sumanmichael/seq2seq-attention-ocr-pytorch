@@ -1,0 +1,8 @@
+numpy
+opencv-python
+Pillow
+torch
+torchvision
+jsonargparse[signatures]
+torch_tb_profiler
+tensorboard-plugin-profile
