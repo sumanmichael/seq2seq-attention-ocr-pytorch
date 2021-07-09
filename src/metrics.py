@@ -12,17 +12,17 @@ class WER(Metric):
         self.alphabet = utils.get_alphabet()
 
         self.add_state("wer", default=torch.tensor(0), dist_reduce_fx="sum")
-        self.add_state("n_tokens", default=torch.tensor(0), dist_reduce_fx="sum")
+        self.add_state("n_words", default=torch.tensor(0), dist_reduce_fx="sum")
 
     def update(self, preds, target):
         pred_str = utils.get_converted_word(preds)
         target_str = "".join([self.alphabet[t.item()-2] for t in target[1:]])     # -2 is to exclude SOS EOS
 
         self.wer += self.wer_calc(pred_str, target_str)
-        self.n_tokens += len(target_str.split())
+        self.n_words += len(target_str.split())
 
     def compute(self):
-        wer = float(self.wer) / self.n_tokens
+        wer = float(self.wer) / self.n_words
         return wer.item() * 100
 
     def wer_calc(self, s1, s2):
@@ -44,3 +44,27 @@ class WER(Metric):
         w2 = [chr(word2char[w]) for w in s2.split()]
 
         return levenshtein(''.join(w1), ''.join(w2))
+
+
+class CER(Metric):
+    def __init__(self, dist_sync_on_step=False):
+        super(CER, self).__init__(dist_sync_on_step=dist_sync_on_step)
+        self.alphabet = utils.get_alphabet()
+
+        self.add_state("cer", default=torch.tensor(0), dist_reduce_fx="sum")
+        self.add_state("n_chars", default=torch.tensor(0), dist_reduce_fx="sum")
+
+    def update(self, preds, target):
+        pred_str = utils.get_converted_word(preds)
+        target_str = "".join([self.alphabet[t.item() - 2] for t in target[1:]])  # -2 is to exclude SOS EOS
+
+        self.cer += self.cer_calc(pred_str, target_str)
+        self.n_chars += len(target_str.replace(' ', ''))
+
+    def compute(self):
+        cer = float(self.cer) / self.n_chars
+        return cer.item() * 100
+
+    def cer_calc(self, s1, s2):
+        s1, s2 = s1.replace(' ', ''), s2.replace(' ', '')
+        return levenshtein(s1, s2)
