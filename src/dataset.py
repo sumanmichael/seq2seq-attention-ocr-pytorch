@@ -24,7 +24,7 @@ class TextLineDataset(torch.utils.data.Dataset):
     def __getitem__(self, index):
         assert index <= len(self), 'index range error'
 
-        line_splits = self.lines[index].strip().split()
+        line_splits = self.lines[index].strip().split(' ', 1)   # split on first occurrence of space
         img_path = line_splits[0]
         try:
             if 'train' in self.text_line_file:

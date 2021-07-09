@@ -12,7 +12,7 @@ def get_alphabet():
     with open('./data/devanagari-charset.txt', encoding="utf-8") as f:
         data = f.readlines()
         alphabet = [x.rstrip() for x in data]
-        alphabet = ''.join(alphabet)
+        alphabet += ' '
         return alphabet
 
 
