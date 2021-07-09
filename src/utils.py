@@ -109,3 +109,11 @@ def weights_init(model):
             nn.init.constant_(m.bias, 0)
         elif isinstance(m, nn.Linear):
             nn.init.constant_(m.bias, 0)
+
+
+def get_alphabet():
+    with open('./data/devanagari-charset.txt', encoding="utf-8") as f:
+        data = f.readlines()
+        alphabet = [x.rstrip() for x in data]
+        alphabet += ' '
+        return alphabet

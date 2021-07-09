@@ -27,10 +27,7 @@ class TextLineDataset(torch.utils.data.Dataset):
         line_splits = self.lines[index].strip().split(' ', 1)   # split on first occurrence of space
         img_path = line_splits[0]
         try:
-            if 'train' in self.text_line_file:
-                img = Image.open(img_path).convert('RGB')
-            else:
-                img = Image.open(img_path).convert('RGB')
+            img = Image.open(img_path).convert('RGB')
         except IOError:
             print('Corrupted image for %d' % index)
             return self[index + 1]

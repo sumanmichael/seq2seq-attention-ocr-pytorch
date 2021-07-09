@@ -6,14 +6,7 @@ from pytorch_lightning.utilities.cli import instantiate_class
 
 from crnn.seq2seq import Encoder, Decoder
 from src import utils, dataset
-
-
-def get_alphabet():
-    with open('./data/devanagari-charset.txt', encoding="utf-8") as f:
-        data = f.readlines()
-        alphabet = [x.rstrip() for x in data]
-        alphabet += ' '
-        return alphabet
+from src.utils import get_alphabet
 
 
 class OCR(pl.LightningModule):
@@ -27,9 +20,7 @@ class OCR(pl.LightningModule):
             teaching_forcing_prob: float = 0.5,
             learning_rate: float = 0.0001,
             dropout_p: float = 0.1,
-            encoder_pth: str = None,
-            decoder_pth: str = None,
-            save_model_dir: str = None,
+            output_pred_path: str = 'output.txt',
             decoder_optimizer_args: dict = None,
             encoder_optimizer_args: dict = None,
 
@@ -45,9 +36,7 @@ class OCR(pl.LightningModule):
                     teaching_forcing_prob: percentage of samples to apply teach forcing
                     learning_rate: learning_rate
                     dropout_p: Dropout probability in Decoder Dropout layer
-                    encoder_pth: path to encoder (to continue training)
-                    decoder_pth: path to decoder (to continue training)
-                    save_model_dir: Where to store samples and models
+
         """
         super(OCR, self).__init__()
 
@@ -59,9 +48,7 @@ class OCR(pl.LightningModule):
         self.teaching_forcing_prob = teaching_forcing_prob
         self.learning_rate = learning_rate
         self.dropout_p = dropout_p
-        self.encoder_pth = encoder_pth
-        self.decoder_pth = decoder_pth
-        self.save_model_dir = save_model_dir
+        self.output_pred_path = output_pred_path
 
         self.alphabet = get_alphabet()
         self.num_classes = len(self.alphabet) + 2  # len(alphabet) + SOS_TOKEN + EOS_TOKEN
@@ -71,8 +58,8 @@ class OCR(pl.LightningModule):
 
         if encoder_optimizer_args is None:
             encoder_optimizer_args = {
-                "class_path":"torch.optim.Adam",
-                "init_args":{
+                "class_path": "torch.optim.Adam",
+                "init_args": {
                     "lr": 0.0001
                 }
             }
@@ -94,13 +81,6 @@ class OCR(pl.LightningModule):
 
         self.encoder.apply(utils.weights_init)
         self.decoder.apply(utils.weights_init)
-
-        if self.encoder_pth:
-            print('loading pretrained encoder model from %s' % self.encoder_pth)
-            self.encoder.load_state_dict(torch.load(self.encoder_pth))
-        if self.decoder_pth:
-            print('loading pretrained encoder model from %s' % self.decoder_pth)
-            self.decoder.load_state_dict(torch.load(self.decoder_pth))
 
     def forward(self, cpu_images, cpu_texts, is_training=True):
         utils.load_data(self.image, cpu_images)
@@ -165,26 +145,28 @@ class OCR(pl.LightningModule):
         for di, decoder_output in enumerate(decoder_outputs, 1):  # Last Dec
             loss += self.criterion(decoder_output, target_variable[di])
 
-        # accuracy, ground_truth, pred_text = self.get_preds(cpu_texts, decoder_output)
-        #
-        # with open(self.pred_text_file, "a+", encoding="utf-8") as f:
-        #     f.write(f'{accuracy}\t{pred_text}\t{ground_truth}\n')
-
         self.log('val_loss', loss, logger=True)
         return loss
 
-    def get_preds(self, cpu_texts, decoder_output):
-        target_variable = self.converter.encode(cpu_texts).to(self.device)
-        decoded_label = [decoder_output.data.topk(1)[1].squeeze(1)]
-        n_correct = 0
-        for pred, target in zip(decoded_label, target_variable[1:, :]):
-            if pred == target:
-                n_correct += 1
-        n_total = len(cpu_texts[0]) + 1
-        pred_text = ''.join([self.converter.decode(ni) for ni in decoded_label])
-        ground_truth = cpu_texts[0]  # Considering BatchSize = 1
-        accuracy = n_correct / n_total
-        return accuracy, ground_truth, pred_text
+    def test_step(self, test_batch, batch_idx, optimizer_idx=None):
+        cpu_images, _ = test_batch
+        decoder_outputs = self.forward(cpu_images, None, is_training=False)
+
+        return self.get_word_and_prob(decoder_outputs)
+
+    def get_word_and_prob(self, decoder_outputs):
+        converter = utils.ConvertBetweenStringAndLabel(utils.get_alphabet())
+        decoded_words = []
+        prob = 1.0
+        for decoder_output in decoder_outputs:
+            probs = torch.exp(decoder_output)
+            _, topi = decoder_output.data.topk(1)
+            ni = topi.squeeze(1)
+            prob *= probs[:, ni]
+            decoded_words.append(converter.decode(ni))
+        words = ''.join(decoded_words)
+        prob = prob.item()
+        return words, prob
 
     # def configure_optimizers(self):
     #     encoder_optimizer = torch.optim.Adam(self.encoder.parameters(), lr=self.learning_rate, betas=(0.5, 0.999))
@@ -204,6 +186,7 @@ class OCRDataModule(pl.LightningDataModule):
             self,
             train_list: str = None,
             val_list: str = None,
+            test_list: str = None,
             img_height: int = 32,
             img_width: int = 512,
             num_workers: int = 2,
@@ -215,6 +198,7 @@ class OCRDataModule(pl.LightningDataModule):
         Args:
             train_list: path to train dataset list file
             val_list: path to validation dataset list file
+            test_list: path to test dataset list file
             img_height: the height of the input image to network
             img_width: the width of the input image to network
             num_workers: number of data loading num_workers
@@ -225,6 +209,7 @@ class OCRDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
         self.train_list = train_list
         self.val_list = val_list
+        self.test_list = test_list
         self.img_height = img_height
         self.img_width = img_width
         self.num_workers = num_workers
@@ -233,6 +218,7 @@ class OCRDataModule(pl.LightningDataModule):
         self.train_dataset = None
         self.training_sampler = None
         self.val_dataset = None
+        self.test_dataset = None
 
     def setup(self, stage=None):
         if self.train_list:
@@ -244,6 +230,11 @@ class OCRDataModule(pl.LightningDataModule):
                                                        transform=dataset.ResizeNormalize(img_width=self.img_width,
                                                                                          img_height=self.img_height))
 
+        if self.test_list:
+            self.test_dataset = dataset.TextLineDataset(text_line_file=self.test_list,
+                                                        transform=dataset.ResizeNormalize(img_width=self.img_width,
+                                                                                          img_height=self.img_height))
+
     def train_dataloader(self):
         return torch.utils.data.DataLoader(
             self.train_dataset, batch_size=self.batch_size, shuffle=False, sampler=self.training_sampler,
@@ -252,4 +243,8 @@ class OCRDataModule(pl.LightningDataModule):
 
     def val_dataloader(self):
         return torch.utils.data.DataLoader(self.val_dataset, shuffle=False, batch_size=1,
+                                           num_workers=int(self.num_workers))
+
+    def test_dataloader(self):
+        return torch.utils.data.DataLoader(self.test_dataset, shuffle=False, batch_size=1,
                                            num_workers=int(self.num_workers))
