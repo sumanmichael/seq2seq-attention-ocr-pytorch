@@ -7,9 +7,12 @@ from aocr import OCR, OCRDataModule
 
 class OCRLightningCLI(LightningCLI):
     defaults = {
-        'model_checkpoint.monitor': 'train_loss',
+        'model_checkpoint.monitor': 'val_loss',
+        'model_checkpoint.save_top_k': 3,
+        'model_checkpoint.filename': 'aocr-pt-epoch{epoch:02d}-val_loss{val_loss:.2f}',
+        'model_checkpoint.auto_insert_metric_name': False,
 
-        # 'early_stopping.monitor': 'train_loss',
+        # 'early_stopping.monitor': 'val_loss',
         # 'early_stopping.patience': 5,
 
         'data.train_list': 'data/dataset/train_list.txt',
@@ -19,6 +22,7 @@ class OCRLightningCLI(LightningCLI):
         # 'trainer.max_epochs': 3,
         # 'trainer.check_val_every_n_epoch': 1,
         'trainer.benchmark': True,
+        # 'trainer.gpus' : 1,
         # 'trainer.profiler': "pytorch",
         # 'trainer.log_every_n_steps': 50,
     }

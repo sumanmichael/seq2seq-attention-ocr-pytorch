@@ -9,8 +9,10 @@ All dependencies should be installed are as follows:
 * Pillow
 * torch
 * torchvision
+* torchmetrics
 * pytorch-lightning
 * jsonargparse[signatures]
+* rapidfuzz
 
 Required packages can be installed with
 ```bash
@@ -20,20 +22,20 @@ pip3 install -r requirements.txt
 # Train a new model
 
 
-* Create **train_list.txt** and **test_list.txt** as follow format
+* Create **train_list.txt** and **val_list.txt** as follow format
 ```
-data/dataset/20210420_093714_rst-l0.jpg श्रीशेखावतशक्तसिंहनृपतेमुख्यात्मजाऽप्युत्सुका,
-data/dataset/20210420_093714_rst-l1.jpg स्नात्वा-वर्म-विभूष्य-भूषरणपटैर्यानेन-तत्रावजत्-॥२२॥-
-data/dataset/20210420_093714_rst-l2.jpg तासां-सत्परिचारिका-निज-निज-स्वामिन्युपस्थायिका-'
-data/dataset/20210420_093714_rst-l3.jpg स्तत्रेयुः-किल-या-नृपस्य-च-सदा-छन्दानुगाः-पार्श्वगाः-।-
+data/dataset/20210420_093920_rst-l11.jpg निद्रातः स्वयमेव भो अनुचरा! उबुध्य चात्मेच्छया,
+data/dataset/20210420_093920_rst-l12.jpg प्रोत्थास्यामि न कश्चिदेत्य हि पुमान् मां जातुचिद् बोधयेत् । 
+data/dataset/20210420_093920_rst-l13.jpg प्रोच्यैवं शयनं चकार नृपतिस्तत्पादपद्म पुन 
+data/dataset/20210420_093920_rst-l14.jpg र्दास्यौ द्व अनुकूलमेव विनयात् संवाहयांचक्रतुः ॥१४॥
 ```
 
-* Start training
+* Modify YAML & Start training
 ```
 python3 trainer.py --config default_config.yaml
 ```
 
-# Help [CLI]
+# Help - YAML Config & CLI
 
 ```
 ➜ python trainer.py -h

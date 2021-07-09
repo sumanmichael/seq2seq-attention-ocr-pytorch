@@ -6,7 +6,8 @@ from pytorch_lightning.utilities.cli import instantiate_class
 
 from crnn.seq2seq import Encoder, Decoder
 from src import utils, dataset
-from src.utils import get_alphabet
+from src.metrics import WER
+from src.utils import get_alphabet, get_converted_word
 
 
 class OCR(pl.LightningModule):
@@ -76,6 +77,7 @@ class OCR(pl.LightningModule):
 
         self.criterion = torch.nn.NLLLoss()
         self.converter = utils.ConvertBetweenStringAndLabel(self.alphabet)
+        self.wer = WER()
 
         self.image = torch.FloatTensor(self.batch_size, 3, self.img_height, self.img_width).to(self.device)
 
@@ -132,8 +134,12 @@ class OCR(pl.LightningModule):
         for di, decoder_output in enumerate(decoder_outputs, 1):
             loss += self.criterion(decoder_output, target_variable[di])
 
-        self.log('train_loss', loss, logger=True)
-        return loss
+        metrics = {
+            'loss': loss,
+            # 'train_wer': self.wer(decoder_outputs, target_variable)   # batch WER?
+        }
+        self.log_dict(metrics, logger=True)
+        return metrics
 
     def validation_step(self, val_batch, batch_idx, optimizer_idx=None):
         cpu_images, cpu_texts = val_batch
@@ -145,28 +151,19 @@ class OCR(pl.LightningModule):
         for di, decoder_output in enumerate(decoder_outputs, 1):  # Last Dec
             loss += self.criterion(decoder_output, target_variable[di])
 
-        self.log('val_loss', loss, logger=True)
+        log_dict = {
+            'val_loss': loss,
+            'val_wer': self.wer(decoder_outputs, target_variable)
+        }
+        self.log_dict(log_dict, logger=True)
         return loss
 
     def test_step(self, test_batch, batch_idx, optimizer_idx=None):
         cpu_images, _ = test_batch
         decoder_outputs = self.forward(cpu_images, None, is_training=False)
+        return get_converted_word(decoder_outputs)
 
-        return self.get_word_and_prob(decoder_outputs)
 
-    def get_word_and_prob(self, decoder_outputs):
-        converter = utils.ConvertBetweenStringAndLabel(utils.get_alphabet())
-        decoded_words = []
-        prob = 1.0
-        for decoder_output in decoder_outputs:
-            probs = torch.exp(decoder_output)
-            _, topi = decoder_output.data.topk(1)
-            ni = topi.squeeze(1)
-            prob *= probs[:, ni]
-            decoded_words.append(converter.decode(ni))
-        words = ''.join(decoded_words)
-        prob = prob.item()
-        return words, prob
 
     # def configure_optimizers(self):
     #     encoder_optimizer = torch.optim.Adam(self.encoder.parameters(), lr=self.learning_rate, betas=(0.5, 0.999))

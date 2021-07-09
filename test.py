@@ -29,7 +29,7 @@ def test(
 
         decoder_outputs = ocr(image, None, is_training=False)
 
-        words, prob = ocr.get_word_and_prob(decoder_outputs)
+        words, prob = utils.get_converted_word(decoder_outputs, get_prob=True)
 
         print("PREDICTED: ", words)
         print("WITH PROB: ", prob)

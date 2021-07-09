@@ -117,3 +117,26 @@ def get_alphabet():
         alphabet = [x.rstrip() for x in data]
         alphabet += ' '
         return alphabet
+
+
+def get_converted_word(decoder_outputs, get_prob=False):
+    converter = ConvertBetweenStringAndLabel(get_alphabet())
+    decoded_words = []
+    if get_prob:
+        prob = 1.0
+    for decoder_output in decoder_outputs:
+        _, topi = decoder_output.data.topk(1)
+        ni = topi.squeeze(1)
+        decoded_words.append(converter.decode(ni))
+
+        if get_prob:
+            probs = torch.exp(decoder_output)
+            prob *= probs[:, ni]
+
+    words = ''.join(decoded_words)
+
+    if get_prob:
+        prob = prob.item()
+        return words, prob
+    else:
+        return words
