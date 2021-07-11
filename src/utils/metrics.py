@@ -1,9 +1,8 @@
 import torch
+from rapidfuzz.string_metric import levenshtein
 from torchmetrics import Metric
 
 from src import utils
-
-from rapidfuzz.string_metric import levenshtein
 
 
 class WER(Metric):

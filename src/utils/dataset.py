@@ -24,7 +24,7 @@ class TextLineDataset(torch.utils.data.Dataset):
     def __getitem__(self, index):
         assert index <= len(self), 'index range error'
 
-        line_splits = self.lines[index].strip().split(' ', 1)   # split on first occurrence of space
+        line_splits = self.lines[index].strip().split(' ', 1)  # split on first occurrence of space
         img_path = line_splits[0]
         try:
             img = Image.open(img_path).convert('RGB')
@@ -40,7 +40,8 @@ class TextLineDataset(torch.utils.data.Dataset):
         if self.target_transform is not None:
             label = self.target_transform(label)
 
-        return (img, label)
+        return img, label
+
 
 class ResizeNormalize(object):
 
@@ -52,9 +53,10 @@ class ResizeNormalize(object):
     def __call__(self, img):
         img = np.array(img)
         h, w, c = img.shape
-        height = self.img_height  
+        height = self.img_height
         width = int(w * height / h)
         if width >= self.img_width:
+            # replace resize, to eliminate cv2
             img = cv2.resize(img, (self.img_width, self.img_height))
         else:
             img = cv2.resize(img, (width, height))
@@ -82,10 +84,11 @@ class RandomSequentialSampler(torch.utils.data.sampler.Sampler):
             batch_index = random_start + torch.arange(0, self.batch_size)
             index[i * self.batch_size:(i + 1) * self.batch_size] = batch_index
         # deal with tail
+
         if tail:
             random_start = random.randint(0, len(self) - self.batch_size)
             tail_index = random_start + torch.arange(0, tail)
-            index[(i + 1) * self.batch_size:] = tail_index
+            index[n_batches * self.batch_size:] = tail_index
 
         return iter(index)
 

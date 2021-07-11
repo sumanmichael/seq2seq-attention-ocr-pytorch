@@ -3,9 +3,9 @@ opencv-python
 Pillow
 torch
 torchvision
+torchmetrics
 jsonargparse[signatures]
 pytorch-lightning
 rapidfuzz
-torchmetrics
 torch_tb_profiler
 tensorboard-plugin-profile
