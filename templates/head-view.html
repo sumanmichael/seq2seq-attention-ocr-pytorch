@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <style>
+        .Aligner {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .Aligner-item {
+          max-width: 50%;
+        }
+    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Title</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
+
+</head>
+<body>
+    <br><br><br>
+    <div style="text-align: center">
+        <form action="" method="post" enctype="multipart/form-data">
+            <input type="file" name="file">
+            <input type="submit">
+        </form>
+    </div>
+            <div style="text-align: center">
+            <h2> {{ params["pred_text"]}}</h2>
+        </div>
+    <div class="Aligner">
+
+        <div class="Aligner-item" id='vis_id' style="text-align: center">
+            <div id='vis'></div>
+        </div>
+    </div>
+
+    {% if params is not none %}
+<script type="text/javascript">
+    var BASE64_IMG = "data:image/jpeg;base64, {{base64_img}}";
+    var PYTHON_DICT = {{params|tojson|safe}}
+</script>
+<script src="static/head-view.js" charset="utf-8"></script>
+    {% endif %}
+</body>
+
+</html>

@@ -126,8 +126,8 @@ class OCR(pl.LightningModule):
                 if not is_training:
                     if ni == helpers.EOS_TOKEN:
                         break
-
-        attention_matrix = torch.stack(attention_matrix).permute(1, 0, 2)  # [1,D,E]
+        if return_attentions:
+            attention_matrix = torch.stack(attention_matrix).permute(1, 0, 2).unsqueeze(0)  # [1,D,E]
         return decoder_outputs, attention_matrix
 
     def training_step(self, train_batch, batch_idx, optimizer_idx=None):
