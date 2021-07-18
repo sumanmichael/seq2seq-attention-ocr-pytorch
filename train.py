@@ -16,7 +16,7 @@ class OCRLightningCLI(LightningCLI):
         # 'early_stopping.patience': 5,
 
         'data.train_list': 'data/dataset/train_list.txt',
-        'data.val_list': 'data/dataset/train_list.txt',
+        'data.val_list': 'data/dataset/val_list.txt',
         # 'data.num_workers': 2,
 
         # 'trainer.max_epochs': 3,

@@ -57,8 +57,6 @@ class OCR(pl.LightningModule):
         self.decoder = Decoder(hidden_size=self.hidden_size, output_size=self.num_classes, dropout_p=self.dropout_p,
                                max_length=self.max_enc_seq_len).to(self.device)
 
-
-
         if encoder_optimizer_args is None:
             encoder_optimizer_args = {
                 "class_path": "torch.optim.Adam",
@@ -86,9 +84,6 @@ class OCR(pl.LightningModule):
 
         self.encoder.apply(utils.weights_init)
         self.decoder.apply(utils.weights_init)
-
-        self.encoder.load_state_dict(torch.load("data/encoder_1000.pth"))
-        self.decoder.load_state_dict(torch.load("data/decoder_1000.pth"))
 
     def forward(self, cpu_images, cpu_texts, is_training=True, return_attentions=False):
         utils.load_data(self.image, cpu_images)
