@@ -5,7 +5,7 @@ torch
 torchvision
 torchmetrics
 jsonargparse[signatures]
-pytorch-lightning
+https://github.com/PyTorchLightning/pytorch-lightning/archive/master.zip
 rapidfuzz
 torch_tb_profiler
 tensorboard-plugin-profile

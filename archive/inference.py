@@ -5,7 +5,7 @@ from PIL import Image
 
 import src.seq2seq as crnn
 from src.utils import dataset
-from src.utils import helpers
+from src.utils import utils
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--img_path', type=str, default='', help='the path of the input image to network')
@@ -26,7 +26,7 @@ with open('./data/devanagari-charset.txt', encoding="utf-8") as f:
     alphabet = ''.join(alphabet)
 
 # define convert bwteen string and label index
-converter = helpers.ConvertBetweenStringAndLabel(alphabet)
+converter = utils.ConvertBetweenStringAndLabel(alphabet)
 
 # len(alphabet) + SOS_TOKEN + EOS_TOKEN
 num_classes = len(alphabet) + 2
@@ -44,7 +44,7 @@ def seq2seq_decode(encoder_out, decoder, decoder_input, decoder_hidden, max_leng
         ni = topi.squeeze(1)
         decoder_input = ni
         prob *= probs[:, ni]
-        if ni == helpers.EOS_TOKEN:
+        if ni == utils.EOS_TOKEN:
             break
         else:
             decoded_words.append(converter.decode(ni))
