@@ -87,6 +87,9 @@ class OCR(pl.LightningModule):
         self.encoder.apply(utils.weights_init)
         self.decoder.apply(utils.weights_init)
 
+        self.encoder.load_state_dict(torch.load("data/encoder_1000.pth"))
+        self.decoder.load_state_dict(torch.load("data/decoder_1000.pth"))
+
     def forward(self, cpu_images, cpu_texts, is_training=True, return_attentions=False):
         utils.load_data(self.image, cpu_images)
         self.image = self.image.to(self.device)
