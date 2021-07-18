@@ -13,7 +13,7 @@ def test(
         checkpoint_path=r'C:\Users\suman\PycharmProjects\seq2seq-attention-ocr-pytorch\lightning_logs\version_0\checkpoints\aocr-pt-epoch45-val_loss169.01.ckpt'
 ):
 
-    ocr = OCR.load_from_checkpoint(checkpoint_path, output_pred_path=output_pred_path)
+    ocr = OCR() #.load_from_checkpoint(checkpoint_path, output_pred_path=output_pred_path)
     ocr.eval()
 
     if is_dataset:

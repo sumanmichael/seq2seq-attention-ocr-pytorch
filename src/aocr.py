@@ -56,6 +56,8 @@ class OCR(pl.LightningModule):
         self.decoder = Decoder(hidden_size=self.hidden_size, output_size=self.num_classes, dropout_p=self.dropout_p,
                                max_length=self.max_enc_seq_len).to(self.device)
 
+
+
         if encoder_optimizer_args is None:
             encoder_optimizer_args = {
                 "class_path": "torch.optim.Adam",
@@ -83,6 +85,9 @@ class OCR(pl.LightningModule):
 
         self.encoder.apply(helpers.weights_init)
         self.decoder.apply(helpers.weights_init)
+
+        self.encoder.load_state_dict(torch.load("data/encoder_1000.pth"))
+        self.decoder.load_state_dict(torch.load("data/decoder_1000.pth"))
 
     def forward(self, cpu_images, cpu_texts, is_training=True, return_attentions=False):
         helpers.load_data(self.image, cpu_images)
@@ -114,9 +119,7 @@ class OCR(pl.LightningModule):
             decoder_output, decoder_hidden, decoder_attention = self.decoder(decoder_input, decoder_hidden,
                                                                              encoder_outputs)
             decoder_outputs.append(decoder_output)
-            if return_attentions:
-                attention_matrix.append(decoder_attention)
-            if teach_forcing:
+            if teach_forcing and di != max_length-1:
                 decoder_input = target_variable[di]
             else:
                 _, topi = decoder_output.data.topk(1)
@@ -126,8 +129,11 @@ class OCR(pl.LightningModule):
                 if not is_training:
                     if ni == helpers.EOS_TOKEN:
                         break
+            if return_attentions:
+                attention_matrix.append(decoder_attention)
 
-        attention_matrix = torch.stack(attention_matrix).permute(1, 0, 2)  # [1,D,E]
+        if return_attentions:
+            attention_matrix = torch.stack(attention_matrix).permute(1, 0, 2).unsqueeze(0)  # [1,D,E]
         return decoder_outputs, attention_matrix
 
     def training_step(self, train_batch, batch_idx, optimizer_idx=None):
