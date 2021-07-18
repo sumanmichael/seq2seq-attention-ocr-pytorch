@@ -7,8 +7,7 @@ from src.utils import dataset, helpers
 
 
 def test(
-        test_path=None,
-        pil_image  = None,
+        test_path,
         is_dataset = False,
         output_pred_path='output2.txt',
         checkpoint_path=r'C:\Users\suman\PycharmProjects\seq2seq-attention-ocr-pytorch\lightning_logs\version_0\checkpoints\aocr-pt-epoch45-val_loss169.01.ckpt'
@@ -23,13 +22,7 @@ def test(
         t.test(ocr, dm)
     else:
         transformer = dataset.ResizeNormalize(img_width=ocr.img_width, img_height=ocr.img_height)
-
-        if pil_image is not None:
-            image = pil_image
-        else:
-            image = Image.open(test_path)
-
-        image = image.convert('RGB')
+        image = Image.open(test_path).convert('RGB')
         image = transformer(image)
         image = image.view(1, *image.size())
         image = torch.autograd.Variable(image)
