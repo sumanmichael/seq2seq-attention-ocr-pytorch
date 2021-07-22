@@ -27,7 +27,7 @@ class TextLineDataset(torch.utils.data.Dataset):
         line_splits = self.lines[index].strip().split(' ', 1)  # split on first occurrence of space
         img_path = line_splits[0]
         try:
-            img = Image.open(img_path).convert('RGB')
+            img = Image.open(img_path) #.convert('L')     #TODO Channel check
         except IOError:
             print('Corrupted image for %d' % index)
             return self[index + 1]
@@ -52,11 +52,13 @@ class ResizeNormalize(object):
 
     def __call__(self, img):
         img = np.array(img)
+
         h, w, c = img.shape
+
         height = self.img_height
         width = int(w * height / h)
         if width >= self.img_width:
-            # replace resize, to eliminate cv2
+            # TODO replace resize, to eliminate cv2
             img = cv2.resize(img, (self.img_width, self.img_height))
         else:
             img = cv2.resize(img, (width, height))
@@ -64,6 +66,7 @@ class ResizeNormalize(object):
             img_pad[:height, :width, :] = img
             img = img_pad
         img = Image.fromarray(img)
+        img = img.convert('L')
         img = self.toTensor(img)
         img.sub_(0.5).div_(0.5)
         return img

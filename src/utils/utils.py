@@ -1,12 +1,15 @@
 import collections
 import re
 
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
-SOS_TOKEN = 0  # special token for start of sentence
-EOS_TOKEN = 1  # special token for end of sentence
+# 1,2 in TF
+SOS_TOKEN = 1  # special token for start of sentence
+EOS_TOKEN = 2  # special token for end of sentence
+
 
 class ConvertBetweenStringAndLabel(object):
     """Convert between str and label.
@@ -65,7 +68,10 @@ class ConvertBetweenStringAndLabel(object):
             text (str or list of str): texts to convert.
         """
 
-        texts = list(self.dict.keys())[list(self.dict.values()).index(t)]
+        try:
+            texts = list(self.dict.keys())[list(self.dict.values()).index(t)]
+        except:
+            texts = '?'
         return texts
 
 class Averager(object):
@@ -113,6 +119,14 @@ def weights_init(model):
 
 
 def get_alphabet():
+    y = list(',.0123456789-_|#')
+    extra_ords = [8205, 8220, 8221, 43251, 7386, 8211, 183, 8216, 8217, 8212, 8226, 221, 209, 2965, 3006, 2985, 2792,
+                  2798, 1040, 1041, 205, 173, 3585, 3594, 219, 65279, 216]
+    extraChars = [chr(i) for i in range(32, 127)] + [chr(i) for i in extra_ords]
+    CHARMAP = ['',' '] + [chr(i) for i in range(2304, 2432)] + y + extraChars
+    return CHARMAP
+
+def get_alphabet_from_file():
     with open('./data/devanagari-charset.txt', encoding="utf-8") as f:
         data = f.readlines()
         alphabet = [x.rstrip() for x in data]
@@ -144,6 +158,20 @@ def get_converted_word(decoder_outputs, get_prob=False):
         return words, prob
     else:
         return words
+
+
+def get_one_hot(arr, max_value):
+    # arr = arr.to('cpu')
+    return torch.zeros(len(arr), max_value).scatter_(1, arr.unsqueeze(1), 1.)
+
+
+def modify_state_for_tf_compat(state_pytorch):
+    h, c = state_pytorch
+    ch_fw = torch.cat((c[0], h[0]), axis=1)
+    c1, h1, c2, h2 = [s.unsqueeze(0) for s in torch.chunk(ch_fw, 4, dim=1)]
+    (dec_h, dec_c) = (torch.cat((h1, h2), dim=0), torch.cat((c1, c2), dim=0))
+    return dec_h, dec_c
+
 
 
 class digitIterator:

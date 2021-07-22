@@ -13,7 +13,7 @@ def test(
         checkpoint_path=r'lightning_logs\version_0\checkpoints\aocr-pt-epoch45-val_loss169.01.ckpt'
 ):
 
-    ocr = OCR().load_from_checkpoint(checkpoint_path, output_pred_path=output_pred_path)
+    ocr = OCR()#.load_from_checkpoint(checkpoint_path, output_pred_path=output_pred_path)
     ocr.eval()
 
     if is_dataset:
@@ -35,4 +35,5 @@ def test(
 
 
 if __name__ == "__main__":
-    test(r'data\dataset\20210420_093652_rst-l8.jpg')
+    w,_,_ = test(r'data\dataset\20210420_093652_rst-l8.jpg')
+    print(w)

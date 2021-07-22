@@ -25,6 +25,7 @@ class OCRLightningCLI(LightningCLI):
         # 'trainer.gpus' : 1,
         # 'trainer.profiler': "pytorch",
         # 'trainer.log_every_n_steps': 50,
+        'trainer.num_sanity_val_steps':2
     }
 
     def add_arguments_to_parser(self, parser):

@@ -3,7 +3,7 @@ import argparse
 import torch
 from PIL import Image
 
-import src.seq2seq as crnn
+import src.sample_module as crnn
 from src.utils import dataset
 from src.utils import utils
 

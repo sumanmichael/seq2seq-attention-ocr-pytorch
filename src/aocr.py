@@ -4,7 +4,8 @@ import pytorch_lightning as pl
 import torch
 from pytorch_lightning.utilities.cli import instantiate_class
 
-from src.seq2seq import Encoder, Decoder
+from src.modules.encoder import Encoder
+from src.modules.decoder import AttentionDecoder
 from src.utils import utils, dataset
 from src.utils.metrics import WER, CER
 
@@ -12,15 +13,18 @@ from src.utils.metrics import WER, CER
 class OCR(pl.LightningModule):
     def __init__(
             self,
-            hidden_size: int = 256,
-            max_enc_seq_len: int = 129,
-            batch_size: int = 4,
             img_height: int = 32,
             img_width: int = 512,
+            enc_hidden_size: int = 256,
+            enc_seq_len: int = 128,
+            attn_dec_hidden_size: int = 128,
             teaching_forcing_prob: float = 0.5,
             learning_rate: float = 0.0001,
             dropout_p: float = 0.1,
             output_pred_path: str = 'output.txt',
+            num_enc_rnn_layers: int = 2,
+            target_embedding_size: int = 10,
+            batch_size: int = 4,
             decoder_optimizer_args: dict = None,
             encoder_optimizer_args: dict = None,
 
@@ -28,8 +32,8 @@ class OCR(pl.LightningModule):
         """OCR model
 
                 Args:
-                    hidden_size: size of the lstm hidden state
-                    max_enc_seq_len: the width of the feature map out from cnn
+                    enc_hidden_size: size of the lstm hidden state
+                    enc_seq_len: the width of the feature map out from cnn
                     batch_size: input batch size
                     img_height: the height of the input image to network
                     img_width: the width of the input image to network
@@ -40,12 +44,18 @@ class OCR(pl.LightningModule):
 
         """
         super(OCR, self).__init__()
-
-        self.hidden_size = hidden_size
-        self.max_enc_seq_len = max_enc_seq_len
         self.batch_size = batch_size
         self.img_height = img_height
         self.img_width = img_width
+
+        self.enc_hidden_size = enc_hidden_size
+        self.enc_seq_len = enc_seq_len
+        self.num_enc_rnn_layers = num_enc_rnn_layers
+        self.enc_output_vec_size = self.enc_hidden_size * self.num_enc_rnn_layers
+
+        self.attn_dec_hidden_size = attn_dec_hidden_size
+        self.target_embedding_size = target_embedding_size
+
         self.teaching_forcing_prob = teaching_forcing_prob
         self.learning_rate = learning_rate
         self.dropout_p = dropout_p
@@ -53,9 +63,16 @@ class OCR(pl.LightningModule):
 
         self.alphabet = utils.get_alphabet()
         self.num_classes = len(self.alphabet) + 2  # len(alphabet) + SOS_TOKEN + EOS_TOKEN
-        self.encoder = Encoder(channel_size=3, hidden_size=self.hidden_size).to(self.device)
-        self.decoder = Decoder(hidden_size=self.hidden_size, output_size=self.num_classes, dropout_p=self.dropout_p,
-                               max_length=self.max_enc_seq_len).to(self.device)
+
+        self.encoder = Encoder(image_channels=1, enc_hidden_size=self.enc_hidden_size).to(self.device)
+        self.decoder = AttentionDecoder(
+            attn_dec_hidden_size=self.attn_dec_hidden_size,
+            enc_vec_size=self.enc_output_vec_size,
+            enc_seq_length=self.enc_seq_len,
+            target_embedding_size=self.target_embedding_size,
+            target_vocab_size=self.num_classes,
+            batch_size=self.batch_size
+        ).to(self.device)
 
         if encoder_optimizer_args is None:
             encoder_optimizer_args = {
@@ -80,23 +97,29 @@ class OCR(pl.LightningModule):
         self.wer = WER()
         self.cer = CER()
 
-        self.image = torch.FloatTensor(self.batch_size, 3, self.img_height, self.img_width).to(self.device)
+        self.image = torch.FloatTensor(self.batch_size, self.img_height, self.img_width).to(self.device)
 
-        self.encoder.apply(utils.weights_init)
-        self.decoder.apply(utils.weights_init)
+        # self.encoder.apply(utils.weights_init)
+        # self.decoder.apply(utils.weights_init)
 
     def forward(self, cpu_images, cpu_texts, is_training=True, return_attentions=False):
         utils.load_data(self.image, cpu_images)
         self.image = self.image.to(self.device)
-        batch_size = cpu_images.shape[0]
-        encoder_outputs = self.encoder(self.image)
-        decoder_hidden = self.decoder.initHidden(batch_size).to(self.device)
-        max_length = self.max_enc_seq_len
+        self.batch_size = cpu_images.shape[0]
+        encoder_outputs, state = self.encoder(self.image)
+
+        state = utils.modify_state_for_tf_compat(state)
+        state = state[0].to(self.device), state[1].to(self.device)
+
+        self.decoder.set_encoder_output(encoder_outputs)
+        attention_context = torch.zeros((self.batch_size, self.enc_output_vec_size)).to(self.device)
+
+        max_length = self.enc_seq_len
 
         if cpu_texts is not None:  # train / val
             target_variable = self.converter.encode(cpu_texts).to(self.device)
             max_length = target_variable.shape[0]
-            decoder_input = target_variable[utils.SOS_TOKEN].to(self.device)
+            decoder_input = utils.get_one_hot(torch.tensor([utils.SOS_TOKEN]*self.batch_size), self.num_classes).to(self.device)
 
             if is_training:  # train
                 teach_forcing = True if random.random() > self.teaching_forcing_prob else False
@@ -105,30 +128,28 @@ class OCR(pl.LightningModule):
 
         else:  # test
             teach_forcing = False
-            decoder_input = torch.zeros(1).long().to(self.device)
+            decoder_input = utils.get_one_hot(torch.tensor([1] * self.batch_size), self.num_classes)
 
         decoder_outputs = []
-        attention_matrix = []
 
         for di in range(1, max_length):
-            decoder_output, decoder_hidden, decoder_attention = self.decoder(decoder_input, decoder_hidden,
-                                                                             encoder_outputs)
+            decoder_output, attention_context, state = self.decoder(decoder_input, attention_context, state)
             decoder_outputs.append(decoder_output)
-            if teach_forcing and di != max_length-1:
-                decoder_input = target_variable[di]
+            if teach_forcing and di != max_length - 1:
+                decoder_input = utils.get_one_hot(target_variable[di], self.num_classes).to(self.device)
             else:
                 _, topi = decoder_output.data.topk(1)
-                ni = topi.squeeze()
-                decoder_input = ni
+                ni = topi.T[0]
+                decoder_input = utils.get_one_hot(ni, self.num_classes).to(self.device)
                 # Stop in EOS even in training?
                 if not is_training:
                     if ni == utils.EOS_TOKEN:
                         break
-            if return_attentions:
-                attention_matrix.append(decoder_attention)
 
         if return_attentions:
-            attention_matrix = torch.stack(attention_matrix).permute(1, 0, 2).unsqueeze(0)  # [1,D,E]
+            attention_matrix = self.decoder.attention_weights_history  # [1,D,E]
+        else:
+            attention_matrix = None
         return decoder_outputs, attention_matrix
 
     def training_step(self, train_batch, batch_idx, optimizer_idx=None):
