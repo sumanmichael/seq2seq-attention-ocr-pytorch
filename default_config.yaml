@@ -62,7 +62,6 @@ model:
   enc_seq_len: 128
   attn_dec_hidden_size: 128
   teaching_forcing_prob: 0.5
-  learning_rate: 0.0001
   dropout_p: 0.1
   output_pred_path: output.txt
   num_enc_rnn_layers: 2
@@ -76,6 +75,11 @@ data:
   num_workers: 2
   batch_size: 4
   random_sampler: true
+optimizer:
+  lr: 1.0
+  rho: 0.9
+  eps: 1.0e-06
+  weight_decay: 0
 model_checkpoint:
   dirpath: null
   filename: aocr-pt-epoch{epoch:02d}-val_loss{val_loss:.2f}
@@ -92,17 +96,3 @@ model_checkpoint:
   save_on_train_epoch_end: null
   period: null
   every_n_val_epochs: null
-encoder_optimizer:
-  lr: 0.001
-  betas: &id001
-  - 0.9
-  - 0.999
-  eps: 1.0e-08
-  weight_decay: 0
-  amsgrad: false
-decoder_optimizer:
-  lr: 0.001
-  betas: *id001
-  eps: 1.0e-08
-  weight_decay: 0
-  amsgrad: false
