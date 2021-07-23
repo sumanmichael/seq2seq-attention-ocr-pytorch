@@ -27,7 +27,7 @@ class TextLineDataset(torch.utils.data.Dataset):
         line_splits = self.lines[index].strip().split(' ', 1)  # split on first occurrence of space
         img_path = line_splits[0]
         try:
-            img = Image.open(img_path) #.convert('L')     #TODO Channel check
+            img = Image.open(img_path).convert('L')     #TODO Channel check
         except IOError:
             print('Corrupted image for %d' % index)
             return self[index + 1]
@@ -53,7 +53,11 @@ class ResizeNormalize(object):
     def __call__(self, img):
         img = np.array(img)
 
-        h, w, c = img.shape
+        if len(img.shape) == 2:
+            h, w = img.shape
+            c = 1
+        else:
+            h, w, c = img.shape
 
         height = self.img_height
         width = int(w * height / h)
@@ -62,11 +66,14 @@ class ResizeNormalize(object):
             img = cv2.resize(img, (self.img_width, self.img_height))
         else:
             img = cv2.resize(img, (width, height))
-            img_pad = np.zeros((self.img_height, self.img_width, c), dtype=img.dtype)
-            img_pad[:height, :width, :] = img
+            if c == 1:
+                img_pad = np.zeros((self.img_height, self.img_width), dtype=img.dtype)
+                img_pad[:height, :width] = img
+            else:
+                img_pad = np.zeros((self.img_height, self.img_width, c), dtype=img.dtype)
+                img_pad[:height, :width, :] = img
             img = img_pad
         img = Image.fromarray(img)
-        img = img.convert('L')
         img = self.toTensor(img)
         img.sub_(0.5).div_(0.5)
         return img
@@ -101,7 +108,7 @@ class RandomSequentialSampler(torch.utils.data.sampler.Sampler):
 
 class AlignCollate(object):
 
-    def __init__(self, img_height=32, img_width=100):
+    def __init__(self, img_height=32, img_width=512):
         self.img_height = img_height
         self.img_width = img_width
         self.transform = ResizeNormalize(img_width=self.img_width, img_height=self.img_height)
