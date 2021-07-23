@@ -10,10 +10,11 @@ def test(
         test_path,
         is_dataset = False,
         output_pred_path='output.txt',
-        checkpoint_path=r'lightning_logs\version_0\checkpoints\aocr-pt-epoch45-val_loss169.01.ckpt'
+        checkpoint_path='models/aocr.pth'
 ):
 
-    ocr = OCR()#.load_from_checkpoint(checkpoint_path, output_pred_path=output_pred_path)
+    ocr = OCR()
+    ocr.load_state_dict(torch.load(checkpoint_path))
     ocr.eval()
 
     if is_dataset:
@@ -35,5 +36,8 @@ def test(
 
 
 if __name__ == "__main__":
-    w,_,_ = test(r'data\dataset\20210420_093652_rst-l8.jpg')
-    print(w)
+    w,_,_ = test(r'data/predict-1-12/image.PNG')
+    di = utils.digitIterator(w)
+    # with open("sample.txt", "w", encoding="utf-8") as f:
+    #     f.write(di.get_str())
+    print(w,di.get_str())

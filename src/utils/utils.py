@@ -29,7 +29,7 @@ class ConvertBetweenStringAndLabel(object):
         self.dict['SOS_TOKEN'] = SOS_TOKEN
         self.dict['EOS_TOKEN'] = EOS_TOKEN
         for i, item in enumerate(self.alphabet):
-            self.dict[item] = i + 2
+            self.dict[item] = i + 3
 
     def encode(self, text):
         """
@@ -69,9 +69,11 @@ class ConvertBetweenStringAndLabel(object):
         """
 
         try:
-            texts = list(self.dict.keys())[list(self.dict.values()).index(t)]
-        except:
+            # texts = list(self.dict.keys())[list(self.dict.values()).index(t)]
+            texts = self.alphabet[t - 3]
+        except Exception as e:
             texts = '?'
+            raise e
         return texts
 
 class Averager(object):
@@ -123,8 +125,9 @@ def get_alphabet():
     extra_ords = [8205, 8220, 8221, 43251, 7386, 8211, 183, 8216, 8217, 8212, 8226, 221, 209, 2965, 3006, 2985, 2792,
                   2798, 1040, 1041, 205, 173, 3585, 3594, 219, 65279, 216]
     extraChars = [chr(i) for i in range(32, 127)] + [chr(i) for i in extra_ords]
-    CHARMAP = ['',' '] + [chr(i) for i in range(2304, 2432)] + y + extraChars
+    CHARMAP = [' '] + [chr(i) for i in range(2304, 2432)] + y + extraChars
     return CHARMAP
+
 
 def get_alphabet_from_file():
     with open('./data/devanagari-charset.txt', encoding="utf-8") as f:

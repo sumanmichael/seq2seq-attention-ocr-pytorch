@@ -9,7 +9,6 @@ from src.modules.decoder import AttentionDecoder
 from src.utils import utils, dataset
 from src.utils.metrics import WER, CER
 
-
 class OCR(pl.LightningModule):
     def __init__(
             self,
@@ -62,7 +61,7 @@ class OCR(pl.LightningModule):
         self.output_pred_path = output_pred_path
 
         self.alphabet = utils.get_alphabet()
-        self.num_classes = len(self.alphabet) + 2  # len(alphabet) + SOS_TOKEN + EOS_TOKEN
+        self.num_classes = len(self.alphabet) + 3  # len(alphabet) + 0 + SOS_TOKEN + EOS_TOKEN
 
         self.encoder = Encoder(image_channels=1, enc_hidden_size=self.enc_hidden_size).to(self.device)
         self.decoder = AttentionDecoder(
@@ -92,7 +91,7 @@ class OCR(pl.LightningModule):
         self.encoder_optimizer_args = encoder_optimizer_args
         self.decoder_optimizer_args = decoder_optimizer_args
 
-        self.criterion = torch.nn.NLLLoss()
+        self.criterion = torch.nn.CrossEntropyLoss()
         self.converter = utils.ConvertBetweenStringAndLabel(self.alphabet)
         self.wer = WER()
         self.cer = CER()
@@ -143,7 +142,7 @@ class OCR(pl.LightningModule):
                 decoder_input = utils.get_one_hot(ni, self.num_classes).to(self.device)
                 # Stop in EOS even in training?
                 if not is_training:
-                    if ni == utils.EOS_TOKEN:
+                    if ni.item() == utils.EOS_TOKEN:
                         break
 
         if return_attentions:

@@ -13,7 +13,7 @@ class AttentionDecoder(pl.LightningModule):
     """
 
     def __init__(self, attn_dec_hidden_size, enc_vec_size, enc_seq_length, target_embedding_size, target_vocab_size,
-                 batch_size, LOAD_PATH=r'C:\Users\suman\iiith\attention-ocr-pytorch\models\decoder.pth'):
+                 batch_size, LOAD_PATH=None):
         super(AttentionDecoder, self).__init__()
         self.enc_vec_size = enc_vec_size  # 512
         self.enc_seq_length = enc_seq_length  # 128
@@ -29,7 +29,7 @@ class AttentionDecoder(pl.LightningModule):
 
         self.attention_projection = nn.Linear(self.enc_vec_size, self.enc_vec_size)
 
-        self.input_projection = nn.Linear(self.target_embedding_size + self.enc_vec_size, self.attn_dec_hidden_size)
+        self.input_projection = nn.Linear(self.target_embedding_size + self.enc_vec_size, self.cell_input_size)
         self.output_projection = nn.Linear(self.attn_dec_hidden_size + self.enc_vec_size, self.target_vocab_size)
 
         self.VT = nn.Linear(self.enc_vec_size, 1, bias=False)

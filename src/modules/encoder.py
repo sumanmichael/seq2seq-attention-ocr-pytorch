@@ -9,7 +9,7 @@ class Encoder(pl.LightningModule):
         CNN+BiLstm does feature extraction
     '''
 
-    def __init__(self, image_channels, enc_hidden_size, LOAD_PATH=r'C:\Users\suman\iiith\attention-ocr-pytorch\models\encoder.pth'):
+    def __init__(self, image_channels, enc_hidden_size, LOAD_PATH=None):
         super(Encoder, self).__init__()
 
 
@@ -27,7 +27,7 @@ class Encoder(pl.LightningModule):
         # TODO: Dropout
         self.rnn = nn.LSTM(input_size=512, hidden_size=enc_hidden_size, bidirectional=True)
 
-        if LOAD_PATH:
+        if LOAD_PATH is not None:
             self.load_state_dict(torch.load(LOAD_PATH))
 
     def forward(self, input):
