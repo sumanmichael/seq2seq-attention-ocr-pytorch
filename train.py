@@ -33,23 +33,13 @@ class OCRLightningCLI(LightningCLI):
         parser.link_arguments('data.img_height', 'model.img_height')
         parser.link_arguments('data.img_width', 'model.img_width')
 
+        parser.add_optimizer_args(torch.optim.Adadelta)
+        # parser.add_lr_scheduler_args(torch.optim.lr_scheduler.ExponentialLR)
         # parser.add_lightning_class_args(EarlyStopping, 'early_stopping')
         parser.add_lightning_class_args(ModelCheckpoint, 'model_checkpoint')
 
         for k, v in self.defaults.items():
             parser.set_defaults({k: v})
-
-        parser.add_optimizer_args(
-            torch.optim.Adam,
-            "encoder_optimizer",
-            link_to='model.encoder_optimizer_args',
-        )
-
-        parser.add_optimizer_args(
-            torch.optim.Adam,
-            "decoder_optimizer",
-            link_to='model.decoder_optimizer_args',
-        )
 
 
 if __name__ == "__main__":

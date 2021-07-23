@@ -2,7 +2,6 @@ import random
 
 import pytorch_lightning as pl
 import torch
-from pytorch_lightning.utilities.cli import instantiate_class
 
 from src.modules.encoder import Encoder
 from src.modules.decoder import AttentionDecoder
@@ -18,14 +17,11 @@ class OCR(pl.LightningModule):
             enc_seq_len: int = 128,
             attn_dec_hidden_size: int = 128,
             teaching_forcing_prob: float = 0.5,
-            learning_rate: float = 0.0001,
             dropout_p: float = 0.1,
             output_pred_path: str = 'output.txt',
             num_enc_rnn_layers: int = 2,
             target_embedding_size: int = 10,
-            batch_size: int = 4,
-            decoder_optimizer_args: dict = None,
-            encoder_optimizer_args: dict = None,
+            batch_size: int = 4
 
     ):
         """OCR model
@@ -37,7 +33,6 @@ class OCR(pl.LightningModule):
                     img_height: the height of the input image to network
                     img_width: the width of the input image to network
                     teaching_forcing_prob: percentage of samples to apply teach forcing
-                    learning_rate: learning_rate
                     dropout_p: Dropout probability in Decoder Dropout layer
 
 
@@ -56,7 +51,6 @@ class OCR(pl.LightningModule):
         self.target_embedding_size = target_embedding_size
 
         self.teaching_forcing_prob = teaching_forcing_prob
-        self.learning_rate = learning_rate
         self.dropout_p = dropout_p
         self.output_pred_path = output_pred_path
 
@@ -72,24 +66,6 @@ class OCR(pl.LightningModule):
             target_vocab_size=self.num_classes,
             batch_size=self.batch_size
         ).to(self.device)
-
-        if encoder_optimizer_args is None:
-            encoder_optimizer_args = {
-                "class_path": "torch.optim.Adam",
-                "init_args": {
-                    "lr": 0.0001
-                }
-            }
-        if decoder_optimizer_args is None:
-            decoder_optimizer_args = {
-                "class_path": "torch.optim.Adam",
-                "init_args": {
-                    "lr": 0.0001
-                }
-            }
-
-        self.encoder_optimizer_args = encoder_optimizer_args
-        self.decoder_optimizer_args = decoder_optimizer_args
 
         self.criterion = torch.nn.CrossEntropyLoss()
         self.converter = utils.ConvertBetweenStringAndLabel(self.alphabet)
@@ -189,19 +165,6 @@ class OCR(pl.LightningModule):
         cpu_images, _ = test_batch
         decoder_outputs, attention_matrix = self.forward(cpu_images, None, is_training=False, return_attentions=True)
         return utils.get_converted_word(decoder_outputs), attention_matrix
-
-    # def configure_optimizers(self):
-    #     encoder_optimizer = torch.optim.Adam(self.encoder.parameters(), lr=self.learning_rate, betas=(0.5, 0.999))
-    #     decoder_optimizer = torch.optim.Adam(self.decoder.parameters(), lr=self.learning_rate, betas=(0.5, 0.999))
-    #
-    #     return encoder_optimizer, decoder_optimizer
-
-    def configure_optimizers(self):
-        encoder_optimizer = instantiate_class(self.encoder.parameters(), self.encoder_optimizer_args)
-        decoder_optimizer = instantiate_class(self.decoder.parameters(), self.decoder_optimizer_args)
-
-        return encoder_optimizer, decoder_optimizer
-
 
 class OCRDataModule(pl.LightningDataModule):
     def __init__(
