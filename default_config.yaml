@@ -9,7 +9,7 @@ trainer:
   process_position: 0
   num_nodes: 1
   num_processes: 1
-  gpus: null
+  gpus: 1
   auto_select_gpus: false
   tpu_cores: null
   ipus: null
@@ -67,8 +67,8 @@ model:
   num_enc_rnn_layers: 2
   target_embedding_size: 10
 data:
-  train_list: data/dataset/train_list.txt
-  val_list: data/dataset/val_list.txt
+  train_list: test50.txt
+  val_list: val10.txt
   test_list: null
   img_height: 32
   img_width: 512
@@ -86,13 +86,9 @@ model_checkpoint:
   monitor: val_loss
   verbose: false
   save_last: null
-  save_top_k: 3
+  save_top_k: -1
   save_weights_only: false
   mode: min
-  auto_insert_metric_name: false
   every_n_train_steps: null
-  train_time_interval: null
-  every_n_epochs: null
-  save_on_train_epoch_end: null
-  period: null
+  period: 1
   every_n_val_epochs: null

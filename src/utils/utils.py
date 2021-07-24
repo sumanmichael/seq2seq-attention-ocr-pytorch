@@ -164,7 +164,7 @@ def get_converted_word(decoder_outputs, get_prob=False):
 
 
 def get_one_hot(arr, max_value):
-    # arr = arr.to('cpu')
+    arr = arr.to('cpu')
     return torch.zeros(len(arr), max_value).scatter_(1, arr.unsqueeze(1), 1.)
 
 
