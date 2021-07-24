@@ -9,7 +9,7 @@ trainer:
   process_position: 0
   num_nodes: 1
   num_processes: 1
-  gpus: 1
+  gpus: 2
   auto_select_gpus: false
   tpu_cores: null
   ipus: null
@@ -74,7 +74,7 @@ data:
   img_width: 512
   num_workers: 2
   batch_size: 4
-  random_sampler: true
+  random_sampler: false
 optimizer:
   lr: 1.0
   rho: 0.9
