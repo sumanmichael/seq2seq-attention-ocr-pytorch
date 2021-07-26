@@ -42,30 +42,49 @@ class AttentionDecoder(pl.LightningModule):
         if LOAD_PATH:
             self.load_state_dict(torch.load(LOAD_PATH))
 
-    def attention(self, state_flat):
-        attention_proj_out = self.attention_projection(state_flat)
-        attention_proj_out = attention_proj_out.view(-1, 1, 1, self.enc_vec_size)
+    def get_hidden(self):
 
+        encoder_masks = []
+        for i in range(128 + 1):
+            encoder_masks.append(
+                torch.tile(torch.tensor([[1.]]), [self.batch_size, 1])
+            )
+
+        encoder_inputs = [e * f for e, f in zip(self.encoder_output, encoder_masks[:128])]
+        top_states = [torch.reshape(e, [-1, 1, 256 * 2]) for e in encoder_inputs]
+        attention_states = torch.cat(top_states, 1)
+        hidden = torch.reshape(attention_states, [-1, 128, 1, 512])
+        return hidden
+
+    def attention(self, state_flat):
+        Wh_ht = self.attention_projection(state_flat)  #(l)
+        Wh_ht = Wh_ht.view(-1, 1, 1, self.enc_vec_size)
+                            # v~ (h_v = 512,t=128)
         conv_inp = self.encoder_output.unsqueeze(0)  # 1 128 4 512
-        conv_inp = conv_inp.permute(2, 3, 0, 1)  # 4 512 1 128
-        hf = self.conv_1x1(conv_inp)
-        hf = hf.permute(0, 3, 2, 1)
-        hy = hf + attention_proj_out
+
+
+        conv_inp = self.get_hidden()
+        conv_inp = conv_inp.permute(0, 3, 2, 1)  # 4 512 1 128
+        Wv_v = self.conv_1x1(conv_inp)  #(l?512,128)   # 4 512 1 128
+
+        Wv_v = Wv_v.permute(0, 3, 2, 1) #4 128 1 512
+        # Mat = Mat + Vec
+        hy = Wv_v + Wh_ht  #(l?512,128)   #4 128 1 512
         hy = hy.squeeze(2)
 
         th = torch.tanh(hy)
-        e = self.VT(th)
+        e = self.VT(th)  #(1,l?512) #(128)
 
         alpha = torch.softmax(e, dim=1)
-        alpha = alpha.permute(0, 2, 1)
+        alpha = alpha.permute(0, 2, 1) #4 1 128
         hidden = self.encoder_output.permute(1, 0, 2)
-        context = torch.bmm(alpha, hidden)
-
+        context = torch.bmm(alpha, hidden)  #4 1 512
+        # al_t = al_it for all i #(128)
         return context, alpha
 
     def forward(self, prev_output, attention_context, state):
         prev_symbol = torch.argmax(prev_output, dim=1)
-        prev_emb = self.embedding(prev_symbol)
+        prev_emb = self.embedding(prev_symbol) #(B,ED) (?,10)
         inp_proj_inp = torch.cat((prev_emb, attention_context), dim=1)
 
         cell_inp = self.input_projection(inp_proj_inp)
@@ -73,7 +92,7 @@ class AttentionDecoder(pl.LightningModule):
         cell_output, state = self.rnn(cell_inp, state)
         h, c = state
         state_flat = torch.cat((c[0], h[0], c[1], h[1]), dim=1)
-
+        # TODO: COMPLETED
         attention_context, attention_weights = self.attention(state_flat)
         self.attention_weights_history.append(attention_weights)
         cell_output = cell_output.permute(1, 0, 2)
