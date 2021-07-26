@@ -208,7 +208,8 @@ class OCRDataModule(pl.LightningDataModule):
     def setup(self, stage=None):
         if self.train_list:
             self.train_dataset = dataset.TextLineDataset(text_line_file=self.train_list, transform=None)
-            self.training_sampler = dataset.RandomSequentialSampler(self.train_dataset, self.batch_size)
+            if self.random_sampler:
+                self.training_sampler = dataset.RandomSequentialSampler(self.train_dataset, self.batch_size)
 
         if self.val_list:
             self.val_dataset = dataset.TextLineDataset(text_line_file=self.val_list,
