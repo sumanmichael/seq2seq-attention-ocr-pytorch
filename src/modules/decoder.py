@@ -61,10 +61,11 @@ class AttentionDecoder(pl.LightningModule):
         Wh_ht = Wh_ht.view(-1, 1, 1, self.enc_vec_size)
                             # v~ (h_v = 512,t=128)
         conv_inp = self.encoder_output.unsqueeze(0)  # 1 128 4 512
+        self.batch_size = state_flat.shape[0]
 
 
-        conv_inp = self.get_hidden()
-        conv_inp = conv_inp.permute(0, 3, 2, 1)  # 4 512 1 128
+        # conv_inp = self.get_hidden()
+        conv_inp = conv_inp.permute(2, 3, 0, 1)  # 4 512 1 128
         Wv_v = self.conv_1x1(conv_inp)  #(l?512,128)   # 4 512 1 128
 
         Wv_v = Wv_v.permute(0, 3, 2, 1) #4 128 1 512

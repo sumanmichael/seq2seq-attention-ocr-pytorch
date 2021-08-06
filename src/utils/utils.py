@@ -31,7 +31,7 @@ class ConvertBetweenStringAndLabel(object):
         for i, item in enumerate(self.alphabet):
             self.dict[item] = i + 3
 
-    def encode(self, text):
+    def encode(self, text, device='cpu'):
         """
         Args:
             text (str or list of str): texts to convert.
@@ -41,18 +41,18 @@ class ConvertBetweenStringAndLabel(object):
         """
         if isinstance(text, str):
             text = [self.dict[item] if item in self.dict else 2 for item in text]
+            return torch.tensor(text, device=device)
         elif isinstance(text, collections.Iterable):
-            text = [self.encode(s) for s in text]
+            text = [self.encode(s, device) for s in text]
             max_length = max([len(x) for x in text])
             nb = len(text)
-            targets = torch.ones(nb, max_length + 2) * 2
+            targets = torch.ones(nb, max_length + 2, device=device, dtype=torch.long) * 2
             for i in range(nb):
                 targets[i][0] = 0
                 targets[i][1:len(text[i]) + 1] = text[i]
                 targets[i][len(text[i]) + 1] = 1
             text = targets.transpose(0, 1).contiguous()
-            text = text.long()
-        return torch.LongTensor(text)
+            return text.clone().detach()
 
     def decode(self, t):
         """Decode encoded texts back into strs.
@@ -102,11 +102,6 @@ class Averager(object):
         if self.n_count != 0:
             res = self.sum / float(self.n_count)
         return res
-
-def load_data(v, data):
-    with torch.no_grad():
-        v.resize_(data.size()).copy_(data) #TODO
-
 
 def weights_init(model):
     # Official init from torch repo.
@@ -164,8 +159,7 @@ def get_converted_word(decoder_outputs, get_prob=False):
 
 
 def get_one_hot(arr, max_value):
-    arr = arr.to('cpu')
-    return torch.zeros(len(arr), max_value).scatter_(1, arr.unsqueeze(1), 1.)
+    return torch.zeros(len(arr), max_value).type_as(arr).scatter_(1, arr.unsqueeze(1), 1.)
 
 
 def modify_state_for_tf_compat(state_pytorch):

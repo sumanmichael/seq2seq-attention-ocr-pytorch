@@ -57,7 +57,7 @@ class OCR(pl.LightningModule):
         self.alphabet = utils.get_alphabet()
         self.num_classes = len(self.alphabet) + 3  # len(alphabet) + 0 + SOS_TOKEN + EOS_TOKEN
 
-        self.encoder = Encoder(image_channels=1, enc_hidden_size=self.enc_hidden_size).to(self.device)
+        self.encoder = Encoder(image_channels=1, enc_hidden_size=self.enc_hidden_size)
         self.decoder = AttentionDecoder(
             attn_dec_hidden_size=self.attn_dec_hidden_size,
             enc_vec_size=self.enc_output_vec_size,
@@ -65,36 +65,31 @@ class OCR(pl.LightningModule):
             target_embedding_size=self.target_embedding_size,
             target_vocab_size=self.num_classes,
             batch_size=self.batch_size
-        ).to(self.device)
+        )
 
         self.criterion = torch.nn.CrossEntropyLoss()
         self.converter = utils.ConvertBetweenStringAndLabel(self.alphabet)
         self.wer = WER()
         self.cer = CER()
 
-        self.image = torch.FloatTensor(self.batch_size, self.img_height, self.img_width).to(self.device)
-
         # self.encoder.apply(utils.weights_init)
         # self.decoder.apply(utils.weights_init)
 
     def forward(self, cpu_images, cpu_texts, is_training=True, return_attentions=False):
-        utils.load_data(self.image, cpu_images)
-        self.image = self.image.to(self.device)
         self.batch_size = cpu_images.shape[0]
-        encoder_outputs, state = self.encoder(self.image)
+        encoder_outputs, state = self.encoder(cpu_images)
 
         state = utils.modify_state_for_tf_compat(state)
-        state = state[0].to(self.device), state[1].to(self.device)
 
         self.decoder.set_encoder_output(encoder_outputs)
-        attention_context = torch.zeros((self.batch_size, self.enc_output_vec_size)).to(self.device)
+        attention_context = torch.zeros((self.batch_size, self.enc_output_vec_size), device=self.device)
 
         max_length = self.enc_seq_len
 
         if cpu_texts is not None:  # train / val
-            target_variable = self.converter.encode(cpu_texts).to(self.device)
+            target_variable = self.converter.encode(cpu_texts, self.device)
             max_length = target_variable.shape[0]
-            decoder_input = utils.get_one_hot(torch.tensor([utils.SOS_TOKEN]*self.batch_size), self.num_classes).to(self.device)
+            decoder_input = utils.get_one_hot(torch.tensor([utils.SOS_TOKEN]*self.batch_size, device=self.device), self.num_classes)
 
             if is_training:  # train
                 teach_forcing = True if random.random() > self.teaching_forcing_prob else False
@@ -103,7 +98,7 @@ class OCR(pl.LightningModule):
 
         else:  # test
             teach_forcing = False
-            decoder_input = utils.get_one_hot(torch.tensor([1] * self.batch_size), self.num_classes)
+            decoder_input = utils.get_one_hot(torch.tensor([1] * self.batch_size, device=self.device), self.num_classes)
 
         decoder_outputs = []
 
@@ -111,11 +106,11 @@ class OCR(pl.LightningModule):
             decoder_output, attention_context, state = self.decoder(decoder_input, attention_context, state)
             decoder_outputs.append(decoder_output)
             if teach_forcing and di != max_length - 1:
-                decoder_input = utils.get_one_hot(target_variable[di], self.num_classes).to(self.device)
+                decoder_input = utils.get_one_hot(target_variable[di], self.num_classes)
             else:
                 _, topi = decoder_output.data.topk(1)
                 ni = topi.T[0]
-                decoder_input = utils.get_one_hot(ni, self.num_classes).to(self.device)
+                decoder_input = utils.get_one_hot(ni, self.num_classes)
                 # Stop in EOS even in training?
                 if not is_training:
                     if ni.item() == utils.EOS_TOKEN:
@@ -130,7 +125,7 @@ class OCR(pl.LightningModule):
     def training_step(self, train_batch, batch_idx, optimizer_idx=None):
         cpu_images, cpu_texts = train_batch
         decoder_outputs, _ = self.forward(cpu_images, cpu_texts, is_training=True, return_attentions=False)
-        target_variable = self.converter.encode(cpu_texts).to(self.device)
+        target_variable = self.converter.encode(cpu_texts, self.device)
 
         loss = 0.0
         for di, decoder_output in enumerate(decoder_outputs, 1):
@@ -146,7 +141,7 @@ class OCR(pl.LightningModule):
     def validation_step(self, val_batch, batch_idx, optimizer_idx=None):
         cpu_images, cpu_texts = val_batch
         decoder_outputs, _ = self.forward(cpu_images, cpu_texts, is_training=False, return_attentions=False)
-        target_variable = self.converter.encode(cpu_texts).to(self.device)
+        target_variable = self.converter.encode(cpu_texts, self.device) 
 
         loss = 0.0
 

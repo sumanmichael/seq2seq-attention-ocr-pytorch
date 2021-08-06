@@ -17,12 +17,12 @@ class OCRLightningCLI(LightningCLI):
 
         'data.train_list': 'data/dataset/train_list.txt',
         'data.val_list': 'data/dataset/val_list.txt',
-        # 'data.num_workers': 2,
-
-        # 'trainer.max_epochs': 3,
+        'data.num_workers': 2,
+        'data.batch_size' : 4,
+        # 'trainer.max_epochs': 2,
         # 'trainer.check_val_every_n_epoch': 1,
-        'trainer.benchmark': True,
-        # 'trainer.gpus' : 1,
+        'trainer.benchmark': False,
+        'trainer.gpus' : 1,
         # 'trainer.profiler': "pytorch",
         # 'trainer.log_every_n_steps': 50,
         'trainer.num_sanity_val_steps':0

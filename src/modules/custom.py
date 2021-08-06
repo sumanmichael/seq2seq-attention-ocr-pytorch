@@ -4,6 +4,8 @@ from operator import __add__
 import torch
 from torch import nn as nn
 
+import pytorch_lightning as pl
+
 
 class Conv2dSamePadding(nn.Conv2d):
     def __init__(self, *args, **kwargs):
@@ -17,7 +19,7 @@ class Conv2dSamePadding(nn.Conv2d):
         return self._conv_forward(input, self.weight, self.bias)
 
 
-class BatchNorm2d(nn.Module):
+class BatchNorm2d(pl.LightningModule):
     # `num_features`: the number of output channels for a convolutional layer.
     def __init__(self, num_features):
         super().__init__()
@@ -30,17 +32,16 @@ class BatchNorm2d(nn.Module):
         self.moving_variance = torch.ones(shape)
 
     def forward(self, x):
-        if self.moving_mean.device != x.device:
-            self.moving_mean = self.moving_mean.to(x.device)
-            self.moving_variance = self.moving_variance.to(x.device)
+        self.moving_mean = self.moving_mean.type_as(x)
+        self.moving_variance = self.moving_variance.type_as(x)
 
         y = self._batch_norm(x, eps=1e-3, momentum=0.99)
         return y
 
     def _batch_norm(self, x, eps, momentum):
         # Corresponding Equivalents
-        gamma = self.weight
-        beta = self.bias
+        gamma = self.weight.type_as(x)
+        beta = self.bias.type_as(x)
 
         if not torch.is_grad_enabled():
             x_hat = (x - self.moving_mean) / torch.sqrt(self.moving_variance + eps)
