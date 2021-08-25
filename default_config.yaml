@@ -9,7 +9,8 @@ trainer:
   process_position: 0
   num_nodes: 1
   num_processes: 1
-  gpus: 2
+  devices: null
+  gpus: null
   auto_select_gpus: false
   tpu_cores: null
   ipus: null
@@ -67,28 +68,39 @@ model:
   num_enc_rnn_layers: 2
   target_embedding_size: 10
 data:
-  train_list: test50.txt
-  val_list: val10.txt
+  train_list: data/dataset/train_list.txt
+  val_list: data/dataset/val_list.txt
   test_list: null
   img_height: 32
   img_width: 512
-  num_workers: 2
-  batch_size: 4
+  num_workers: 8
+  batch_size: 16
   random_sampler: false
 optimizer:
   lr: 1.0
   rho: 0.9
   eps: 1.0e-06
   weight_decay: 0
+early_stopping:
+  monitor: val_loss
+  min_delta: 0.0
+  patience: 5
+  verbose: false
+  mode: min
+  strict: true
+  check_finite: true
+  stopping_threshold: null
+  divergence_threshold: null
+  check_on_train_epoch_end: true
 model_checkpoint:
   dirpath: null
   filename: aocr-pt-epoch{epoch:02d}-val_loss{val_loss:.2f}
   monitor: val_loss
   verbose: false
   save_last: null
-  save_top_k: -1
+  save_top_k: 3
   save_weights_only: false
   mode: min
   every_n_train_steps: null
-  period: 1
+  period: null
   every_n_val_epochs: null
