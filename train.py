@@ -43,4 +43,5 @@ class OCRLightningCLI(LightningCLI):
 
 
 if __name__ == "__main__":
+    torch.backends.cudnn.enabled = False
     cli = OCRLightningCLI(OCR, OCRDataModule)

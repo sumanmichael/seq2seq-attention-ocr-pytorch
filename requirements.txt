@@ -1,11 +1,10 @@
 numpy
-opencv-python
 Pillow
 torch
 torchvision
 torchmetrics
 jsonargparse[signatures]
-https://github.com/PyTorchLightning/pytorch-lightning/archive/master.zip
+pytorch-lightning
 rapidfuzz
 torch_tb_profiler
 tensorboard-plugin-profile
