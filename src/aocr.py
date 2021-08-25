@@ -109,6 +109,7 @@ class OCR(pl.LightningModule):
                 decoder_input = utils.get_one_hot(target_variable[di], self.num_classes)
             else:
                 _, topi = decoder_output.data.topk(1)
+                topi = topi.detach()
                 ni = topi.T[0]
                 decoder_input = utils.get_one_hot(ni, self.num_classes)
                 # Stop in EOS even in training?

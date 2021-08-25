@@ -1,6 +1,5 @@
 import random
 
-import cv2
 import numpy as np
 import torch
 import torchvision
@@ -51,21 +50,20 @@ class ResizeNormalize(object):
         self.toTensor = torchvision.transforms.ToTensor()
 
     def __call__(self, img):
-        img = np.array(img)
-
-        if len(img.shape) == 2:
-            h, w = img.shape
+        if len(img.size) == 2:
             c = 1
         else:
-            h, w, c = img.shape
+            c = 3
 
+        h, w = img.height, img.width
         height = self.img_height
         width = int(w * height / h)
         if width >= self.img_width:
-            # TODO replace resize, to eliminate cv2
-            img = cv2.resize(img, (self.img_width, self.img_height))
+            img = img.resize((self.img_width, self.img_height))
+            img = np.array(img)
         else:
-            img = cv2.resize(img, (width, height))
+            img = img.resize((width, height))
+            img = np.array(img)
             if c == 1:
                 img_pad = np.zeros((self.img_height, self.img_width), dtype=img.dtype)
                 img_pad[:height, :width] = img
@@ -73,6 +71,7 @@ class ResizeNormalize(object):
                 img_pad = np.zeros((self.img_height, self.img_width, c), dtype=img.dtype)
                 img_pad[:height, :width, :] = img
             img = img_pad
+
         img = Image.fromarray(img)
         img = self.toTensor(img)
         img.sub_(0.5).div_(0.5)
