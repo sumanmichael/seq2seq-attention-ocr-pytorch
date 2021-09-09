@@ -8,3 +8,5 @@ pytorch-lightning
 rapidfuzz
 torch_tb_profiler
 tensorboard-plugin-profile
+hydra-core
+wandb

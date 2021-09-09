@@ -105,3 +105,4 @@ venv.bak/
 
 lightning_logs/
 logs/
+/wandb/

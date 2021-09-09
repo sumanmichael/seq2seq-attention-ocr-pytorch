@@ -1,16 +1,19 @@
+import os.path
 import random
 
 import numpy as np
 import torch
 import torchvision
 from PIL import Image
+from hydra.utils import to_absolute_path, get_original_cwd
 
 
 class TextLineDataset(torch.utils.data.Dataset):
 
     def __init__(self, text_line_file=None, transform=None, target_transform=None):
-        self.text_line_file = text_line_file
-        with open(text_line_file, encoding="utf-8") as fp:
+        self.text_line_file = to_absolute_path(text_line_file)
+        self.root_dir = get_original_cwd()
+        with open(self.text_line_file, encoding="utf-8") as fp:
             self.lines = fp.readlines()
             self.nSamples = len(self.lines)
 
@@ -25,6 +28,8 @@ class TextLineDataset(torch.utils.data.Dataset):
 
         line_splits = self.lines[index].strip().split(' ', 1)  # split on first occurrence of space
         img_path = line_splits[0]
+        # TODO what if img_path is absolute?
+        img_path = os.path.join(self.root_dir, img_path)
         try:
             img = Image.open(img_path).convert('L')     #TODO Channel check
         except IOError:

@@ -22,7 +22,8 @@ class OCR(pl.LightningModule):
             output_pred_path: str = 'output.txt',
             num_enc_rnn_layers: int = 2,
             target_embedding_size: int = 10,
-            batch_size: int = 4
+            batch_size: int = 4,
+            optim_kwargs=None
 
     ):
         """OCR model
@@ -39,6 +40,7 @@ class OCR(pl.LightningModule):
 
         """
         super(OCR, self).__init__()
+
         self.batch_size = batch_size
         self.img_height = img_height
         self.img_width = img_width
@@ -72,6 +74,12 @@ class OCR(pl.LightningModule):
         self.converter = utils.ConvertBetweenStringAndLabel(self.alphabet)
         self.wer = WER()
         self.cer = CER()
+
+        if optim_kwargs is None:
+            optim_kwargs = {
+                "lr": 1e-3
+            }
+        self.optim_kwargs = optim_kwargs
 
         # self.encoder.apply(utils.weights_init)
         # self.decoder.apply(utils.weights_init)
@@ -164,7 +172,7 @@ class OCR(pl.LightningModule):
         return utils.get_converted_word(decoder_outputs), attention_matrix
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adadelta(self.parameters(), **self.optim_kwargs)
         return optimizer
 
 class OCRDataModule(pl.LightningDataModule):

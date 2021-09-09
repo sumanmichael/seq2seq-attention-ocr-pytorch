@@ -1,0 +1,11 @@
+img_height: ${data.img_height}
+img_width: ${data.img_width}
+enc_hidden_size: 256
+enc_seq_len: 128
+attn_dec_hidden_size: 128
+teaching_forcing_prob: 0.5
+dropout_p: 0.1
+output_pred_path: output.txt
+num_enc_rnn_layers: 2
+target_embedding_size: 10
+batch_size: ${data.batch_size}

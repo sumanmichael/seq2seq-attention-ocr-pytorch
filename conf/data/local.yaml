@@ -1,0 +1,5 @@
+defaults:
+  - default
+
+train_list: ./data/dataset/train_list.txt
+val_list: ./data/dataset/val_list.txt

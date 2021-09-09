@@ -1,0 +1,8 @@
+train_list: ???
+val_list: ???
+test_list: null
+img_height: 32
+img_width: 512
+num_workers: 8
+batch_size: 4
+random_sampler: true

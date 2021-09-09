@@ -1,0 +1,2 @@
+monitor: val/loss
+patience: 5

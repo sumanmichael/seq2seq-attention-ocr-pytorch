@@ -1,0 +1,13 @@
+defaults:
+  - trainer: default
+  - data: default
+  - model: default
+  - optim: default
+  - logger: default
+  - callbacks/checkpoint: default
+  - callbacks/early_stopping: default
+  - _self_
+
+hydra:
+  run:
+    dir: ./my_outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
