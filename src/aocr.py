@@ -3,10 +3,11 @@ import random
 import pytorch_lightning as pl
 import torch
 
-from src.modules.encoder import Encoder
 from src.modules.decoder import AttentionDecoder
+from src.modules.encoder import Encoder
 from src.utils import utils, dataset
 from src.utils.metrics import WER, CER
+
 
 class OCR(pl.LightningModule):
     def __init__(
@@ -133,11 +134,11 @@ class OCR(pl.LightningModule):
             loss += self.criterion(decoder_output, target_variable[di])
 
         metrics = {
-            'loss': loss,
+            'train/loss': loss,
             # 'train_wer': self.wer(decoder_outputs, target_variable)   # batch WER?
         }
-        self.log_dict(metrics, logger=True)
-        return metrics
+        self.log_dict(metrics)
+        return loss
 
     def validation_step(self, val_batch, batch_idx, optimizer_idx=None):
         cpu_images, cpu_texts = val_batch
@@ -150,17 +151,21 @@ class OCR(pl.LightningModule):
             loss += self.criterion(decoder_output, target_variable[di])
 
         log_dict = {
-            'val_loss': loss,
-            'val_wer': self.wer(decoder_outputs, target_variable),
-            'val_cer': self.cer(decoder_outputs, target_variable)
+            'val/loss': loss,
+            'val/wer': self.wer(decoder_outputs, target_variable),
+            'val/cer': self.cer(decoder_outputs, target_variable)
         }
-        self.log_dict(log_dict, logger=True)
+        self.log_dict(log_dict)
         return loss
 
     def test_step(self, test_batch, batch_idx, optimizer_idx=None):
         cpu_images, _ = test_batch
         decoder_outputs, attention_matrix = self.forward(cpu_images, None, is_training=False, return_attentions=True)
         return utils.get_converted_word(decoder_outputs), attention_matrix
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        return optimizer
 
 class OCRDataModule(pl.LightningDataModule):
     def __init__(

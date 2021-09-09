@@ -1,10 +1,9 @@
 from functools import reduce
 from operator import __add__
 
+import pytorch_lightning as pl
 import torch
 from torch import nn as nn
-
-import pytorch_lightning as pl
 
 
 class Conv2dSamePadding(nn.Conv2d):

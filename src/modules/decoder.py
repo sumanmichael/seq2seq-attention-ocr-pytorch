@@ -1,8 +1,6 @@
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torch.autograd import Variable
 
 from src.modules.custom import Conv2dSamePadding
 

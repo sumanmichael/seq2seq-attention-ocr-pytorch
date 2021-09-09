@@ -1,6 +1,6 @@
 seed_everything: null
 trainer:
-  logger: true
+  logger: false
   checkpoint_callback: true
   callbacks: null
   default_root_dir: null
@@ -14,13 +14,13 @@ trainer:
   auto_select_gpus: false
   tpu_cores: null
   ipus: null
-  log_gpu_memory: null
+  log_gpu_memory: all
   progress_bar_refresh_rate: null
   overfit_batches: 0.0
   track_grad_norm: -1
   check_val_every_n_epoch: 1
   fast_dev_run: false
-  accumulate_grad_batches: 1
+  accumulate_grad_batches: 4
   max_epochs: null
   min_epochs: null
   max_steps: null
@@ -32,7 +32,7 @@ trainer:
   limit_predict_batches: 1.0
   val_check_interval: 1.0
   flush_logs_every_n_steps: 100
-  log_every_n_steps: 50
+  log_every_n_steps: 20
   accelerator: null
   sync_batchnorm: false
   precision: 32
@@ -41,8 +41,8 @@ trainer:
   num_sanity_val_steps: 2
   truncated_bptt_steps: null
   resume_from_checkpoint: null
-  profiler: null
-  benchmark: true
+  profiler: pytorch
+  benchmark: false
   deterministic: false
   reload_dataloaders_every_n_epochs: 0
   reload_dataloaders_every_epoch: false
@@ -74,33 +74,10 @@ data:
   img_height: 32
   img_width: 512
   num_workers: 8
-  batch_size: 16
-  random_sampler: false
+  batch_size: 4
+  random_sampler: true
 optimizer:
   lr: 1.0
   rho: 0.9
   eps: 1.0e-06
   weight_decay: 0
-early_stopping:
-  monitor: val_loss
-  min_delta: 0.0
-  patience: 5
-  verbose: false
-  mode: min
-  strict: true
-  check_finite: true
-  stopping_threshold: null
-  divergence_threshold: null
-  check_on_train_epoch_end: true
-model_checkpoint:
-  dirpath: null
-  filename: aocr-pt-epoch{epoch:02d}-val_loss{val_loss:.2f}
-  monitor: val_loss
-  verbose: false
-  save_last: null
-  save_top_k: 3
-  save_weights_only: false
-  mode: min
-  every_n_train_steps: null
-  period: null
-  every_n_val_epochs: null

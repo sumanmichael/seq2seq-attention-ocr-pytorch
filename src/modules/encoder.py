@@ -4,6 +4,7 @@ import torch.nn as nn
 
 from src.modules.custom import Conv2dSamePadding, BatchNorm2d
 
+
 class Encoder(pl.LightningModule):
     '''
         CNN+BiLstm does feature extraction

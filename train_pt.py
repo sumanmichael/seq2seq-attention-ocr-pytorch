@@ -6,10 +6,9 @@ import torch
 import torch.backends.cudnn as cudnn
 import torch.utils.data
 
-from src.utils import utils, dataset
-from src.modules.encoder import Encoder
 from src.modules.decoder import AttentionDecoder
-
+from src.modules.encoder import Encoder
+from src.utils import utils, dataset
 # load alphabet
 # with open('./data/devanagari-charset.txt', encoding="utf-8") as f:
 #     data = f.readlines()
@@ -180,7 +179,7 @@ if __name__ == "__main__":
     parser.add_argument('--learning_rate', type=float, default=0.0001, help='learning rate for Critic, default=0.00005')
     parser.add_argument('--encoder', type=str, default='', help="path to encoder (to continue training)")
     parser.add_argument('--decoder', type=str, default='', help='path to decoder (to continue training)')
-    parser.add_argument('--model', default='./model/', help='Where to store samples and models')
+    parser.add_argument('--model', default='./models/', help='Where to store samples and models')
     parser.add_argument('--random_sample', default=True, action='store_true',
                         help='whether to sample the dataset with random sampler')
     parser.add_argument('--teaching_forcing_prob', type=float, default=0.5, help='where to use teach forcing')

@@ -1,5 +1,4 @@
 import torch
-from pytorch_lightning import Trainer
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.utilities.cli import LightningCLI
 
@@ -21,8 +20,9 @@ class OCRLightningCLI(LightningCLI):
         'data.num_workers': 8,
         'data.batch_size': 4,
 
+
         # 'trainer.benchmark': True,
-        'trainer.gpus': 1,
+        'trainer.gpus' : 1,
         'trainer.log_gpu_memory': 'all',
         # 'trainer.profiler': "pytorch",
     }
@@ -37,17 +37,12 @@ class OCRLightningCLI(LightningCLI):
         # parser.add_lightning_class_args(EarlyStopping, 'early_stopping')
         # parser.add_lightning_class_args(ModelCheckpoint, 'model_checkpoint')
 
+
         for k, v in self.defaults.items():
             parser.set_defaults({k: v})
 
 
 if __name__ == "__main__":
-    dm = OCRDataModule(
-        train_list="data/dataset/train_list.txt",
-        val_list="data/dataset/val_list.txt",
-        test_list=None
-    )
-    model = OCR()
-    wandb_logger = WandbLogger(name="with_c10")
-    trainer = Trainer(logger=wandb_logger)
-    trainer.fit(model, dm)
+    import wandb; wandb.init()
+    cli = OCRLightningCLI(OCR, OCRDataModule, trainer_defaults={"logger":WandbLogger()})
+    wandb.watch(cli.model)

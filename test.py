@@ -25,7 +25,7 @@ def test(
     else:
         if enc_inp is None:
             transformer = dataset.ResizeNormalize(img_width=ocr.img_width, img_height=ocr.img_height)
-            image = Image.open(test_path).convert('RGB')
+            image = Image.open(test_path).convert('L')
             image = transformer(image)
             image = image.view(1, *image.size())
             image = torch.autograd.Variable(image)
@@ -40,7 +40,7 @@ def test(
 
 
 if __name__ == "__main__":
-    w,_,_ = test(test_path=None, enc_inp=torch.ones(1, 1, 32, 512))
+    w,_,_ = test(test_path=r"C:\Users\suman\PycharmProjects\seq2seq-attention-ocr-pytorch\data\predict-1-12\image.PNG")
     di = utils.digitIterator(w)
     # with open("sample.txt", "w", encoding="utf-8") as f:
     #     f.write(di.get_str())
