@@ -16,7 +16,10 @@ def main(cfg: DictConfig) -> None:
     checkpoint_callback = ModelCheckpoint(**cfg.callbacks.checkpoint)
     early_stopping = EarlyStopping(**cfg.callbacks.early_stopping)
 
-    trainer = Trainer(logger=wandb_logger, callbacks=[checkpoint_callback, early_stopping])
+    trainer_cfg = OmegaConf.to_container(cfg.trainer, resolve=True)
+    trainer_cfg["logger"] = wandb_logger
+    trainer_cfg["callbacks"] = [checkpoint_callback, early_stopping]
+    trainer = Trainer(**trainer_cfg)
     trainer.fit(model, dm)
 
 
