@@ -1,4 +1,5 @@
 import collections
+import os
 import re
 from collections.abc import Iterable
 
@@ -11,36 +12,31 @@ SOS_TOKEN = 0  # special token for start of sentence
 EOS_TOKEN = 1  # special token for end of sentence
 OOV_TOKEN = 2  #
 
+
 class ConvertBetweenStringAndLabel(object):
     """Convert between str and label.
     NOTE:
         Insert `EOS` to the alphabet for attention.
     Args:
         alphabet (Iterable): set of the possible characters.
-        ignore_case (bool, default=True): whether or not to ignore all of the case.
     """
 
     def __init__(self, alphabet):
         self.alphabet = alphabet
 
-        self.char2idx = {}
-        self.char2idx['SOS_TOKEN'] = SOS_TOKEN
-        self.char2idx['EOS_TOKEN'] = EOS_TOKEN
-        self.char2idx['OOV_TOKEN'] = OOV_TOKEN
+        self.char2idx = {'SOS_TOKEN': SOS_TOKEN, 'EOS_TOKEN': EOS_TOKEN, 'OOV_TOKEN': OOV_TOKEN}
 
-        self.idx2char = {}
-        self.idx2char[SOS_TOKEN] = 'SOS_TOKEN'
-        self.idx2char[EOS_TOKEN] = 'EOS_TOKEN'
-        self.idx2char[OOV_TOKEN] = 'OOV_TOKEN'
+        self.idx2char = {SOS_TOKEN: 'SOS_TOKEN', EOS_TOKEN: 'EOS_TOKEN', OOV_TOKEN: 'OOV_TOKEN'}
 
         for i, item in enumerate(self.alphabet):
             self.char2idx[item] = i + 3
-            self.idx2char[i+3] = item
+            self.idx2char[i + 3] = item
 
-    def encode(self, text):
+    def encode(self, text, device="cpu"):
         """
         Args:
             text (str or list of str): texts to convert.
+            device: torch device
         Returns:
             torch.IntTensor targets:max_length × batch_size
         """
@@ -50,7 +46,7 @@ class ConvertBetweenStringAndLabel(object):
             text = [self.encode(s) for s in text]
             max_length = max([len(x) for x in text])
             nb = len(text)  # BATCH_SIZE
-            targets = torch.ones(nb, max_length + 2) * OOV_TOKEN
+            targets = torch.ones(nb, max_length + 2, device=device, dtype=torch.long) * OOV_TOKEN
             for i in range(nb):
                 targets[i][0] = SOS_TOKEN
                 targets[i][1:len(text[i]) + 1] = text[i]
@@ -65,6 +61,8 @@ class ConvertBetweenStringAndLabel(object):
         """
 
         # texts = list(self.char2idx.keys())[list(self.char2idx.values()).index(t)]
+        if isinstance(ch, torch.Tensor) and ch.size()[0] == 1:
+            ch = ch.item()
         decoded_ch = self.idx2char[ch]
         return decoded_ch
 
@@ -95,6 +93,7 @@ class Averager(object):
         if self.n_count != 0:
             res = self.sum / float(self.n_count)
         return res
+
 
 def weights_init(model):
     # Official init from torch repo.
@@ -163,34 +162,37 @@ def modify_state_for_tf_compat(state_pytorch):
     return dec_h, dec_c
 
 
-
-class digitIterator:
+class DigitIterator:
     def __init__(self, string, curr=0):
         self.string = string
         self.curr = curr
         self.length = len(string)
+
     def get_dig_len(self, increment=True):
-        han4 = [2535,1040, 8221, 2985, 3006, 2792, 8377, 8226, 8220, 8216, 2798, 2965, 3585, 8211, 8212, 1041, 3594, 8204, 7386, 8205, 8211, 8217, 8220,8221]
-        han2 = [93, 61, 42, 47, 58, 96, 63, 40, 37, 41, 59, 34, 43, 33,99]
+        han4 = [2535, 1040, 8221, 2985, 3006, 2792, 8377, 8226, 8220, 8216, 2798, 2965, 3585, 8211, 8212, 1041, 3594,
+                8204, 7386, 8205, 8211, 8217, 8220, 8221]
+        han2 = [93, 61, 42, 47, 58, 96, 63, 40, 37, 41, 59, 34, 43, 33, 99]
         out = self.string
         i = self.curr
-        length=-1
-        if out[i:i+5]=='43251' and out[i:i+5]=='65279':
+        length = -1
+        if out[i:i + 5] == '43251' and out[i:i + 5] == '65279':
             length = 5
-        elif out[i:i+2]=='23' or out[i:i+2]=='24' or int(out[i:i+4]) in han4: #10,82,29,30,27,83,35
+        elif out[i:i + 2] == '23' or out[i:i + 2] == '24' or int(out[i:i + 4]) in han4:  # 10,82,29,30,27,83,35
             length = 4
-        elif out[i:i+3] == '124' or out[i:i+3] == '183':
+        elif out[i:i + 3] == '124' or out[i:i + 3] == '183':
             length = 3
-        elif out[i:i+2]<='96' and out[i:i+2]>='32':
+        elif out[i:i + 2] <= '96' and out[i:i + 2] >= '32':
             length = 2
         else:
             raise Exception
         if increment:
-            self.curr+=length
+            self.curr += length
         return length
+
     def get_next_unicode(self):
-        return self.string[self.curr:self.curr+self.get_dig_len()]
-    def get_ith_unicode(self,i):
+        return self.string[self.curr:self.curr + self.get_dig_len()]
+
+    def get_ith_unicode(self, i):
         tempcurr = self.curr
         self.curr = 0
         for j in range(i):
@@ -198,42 +200,49 @@ class digitIterator:
         tempunicode = self.get_next_unicode()
         self.curr = tempcurr
         return tempunicode
+
     def has_next(self):
         try:
             return self.curr + self.get_dig_len(False) <= self.length
-        except :
+        except:
             return False
+
     def get_next_char(self):
         return chr(int(self.get_next_unicode()))
-    def get_ith_char(self,i):
+
+    def get_ith_char(self, i):
         return chr(int(self.get_ith_unicode(i)))
-    def get_ith_idxs(self,i):
+
+    def get_ith_idxs(self, i):
         tempcurr = self.curr
         self.curr = 0
         for j in range(i):
             self.get_dig_len()
-        currTuple = (self.curr, self.curr+self.get_dig_len())
+        currTuple = (self.curr, self.curr + self.get_dig_len())
         self.curr = tempcurr
         return currTuple
+
     def get_str(self):
-        out=""
-        while(self.has_next()):
+        out = ""
+        while (self.has_next()):
             out += self.get_next_char()
         return out
+
     @staticmethod
-    def getIdxsInfo(char_pred,subString):
+    def getIdxsInfo(char_pred, subString):
         # this is with respect to the unicoded string and not the original char string
-        mIdxs = digitIterator.getMatchingIndexes(char_pred,subString)
-        if len(mIdxs)==0:
+        mIdxs = DigitIterator.getMatchingIndexes(char_pred, subString)
+        if len(mIdxs) == 0:
             return -1
         startEndInfo = []
         encoded_subString = ''.join([str(ord(x)) for x in subString])
         for idx in mIdxs:
             before_str = ''.join([str(ord(char_pred[x])) for x in range(idx)])
             startIdx = len(before_str)
-            endIdx = startIdx+len(encoded_subString)
-            startEndInfo.append(tuple([startIdx,endIdx]))
+            endIdx = startIdx + len(encoded_subString)
+            startEndInfo.append(tuple([startIdx, endIdx]))
         return startEndInfo
+
     @staticmethod
-    def getMatchingIndexes(char_pred,subString):
+    def getMatchingIndexes(char_pred, subString):
         return [m.start() for m in re.finditer(subString, char_pred)]

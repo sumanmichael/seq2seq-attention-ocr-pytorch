@@ -15,7 +15,7 @@ class WER(Metric):
 
     def update(self, preds, target):
         pred_str = utils.get_converted_word(preds)
-        target_str = "".join([self.alphabet[t.item()-2] for t in target[1:]])     # -2 is to exclude SOS EOS
+        target_str = "".join([self.alphabet[t.item()-3] for t in target[1:]])     # -3 is to exclude SOS EOS OOV
 
         self.wer += self.wer_calc(pred_str, target_str)
         self.n_words += len(target_str.split())
@@ -55,7 +55,7 @@ class CER(Metric):
 
     def update(self, preds, target):
         pred_str = utils.get_converted_word(preds)
-        target_str = "".join([self.alphabet[t.item() - 2] for t in target[1:]])  # -2 is to exclude SOS EOS
+        target_str = "".join([self.alphabet[t.item()-3] for t in target[1:]])     # -3 is to exclude SOS EOS OOV
 
         self.cer += self.cer_calc(pred_str, target_str)
         self.n_chars += len(target_str.replace(' ', ''))
