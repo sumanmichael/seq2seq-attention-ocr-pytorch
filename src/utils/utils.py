@@ -1,79 +1,73 @@
 import collections
 import re
+from collections.abc import Iterable
 
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
-# 1,2 in TF
-SOS_TOKEN = 1  # special token for start of sentence
-EOS_TOKEN = 2  # special token for end of sentence
-
+# 1,2 in TF; 0,1 in PT
+SOS_TOKEN = 0  # special token for start of sentence
+EOS_TOKEN = 1  # special token for end of sentence
+OOV_TOKEN = 2  #
 
 class ConvertBetweenStringAndLabel(object):
     """Convert between str and label.
-
     NOTE:
         Insert `EOS` to the alphabet for attention.
-
     Args:
-        alphabet (str): set of the possible characters.
+        alphabet (Iterable): set of the possible characters.
         ignore_case (bool, default=True): whether or not to ignore all of the case.
     """
 
     def __init__(self, alphabet):
         self.alphabet = alphabet
 
-        self.dict = {}
-        self.dict['SOS_TOKEN'] = SOS_TOKEN
-        self.dict['EOS_TOKEN'] = EOS_TOKEN
-        for i, item in enumerate(self.alphabet):
-            self.dict[item] = i + 3
+        self.char2idx = {}
+        self.char2idx['SOS_TOKEN'] = SOS_TOKEN
+        self.char2idx['EOS_TOKEN'] = EOS_TOKEN
+        self.char2idx['OOV_TOKEN'] = OOV_TOKEN
 
-    def encode(self, text, device='cpu'):
+        self.idx2char = {}
+        self.idx2char[SOS_TOKEN] = 'SOS_TOKEN'
+        self.idx2char[EOS_TOKEN] = 'EOS_TOKEN'
+        self.idx2char[OOV_TOKEN] = 'OOV_TOKEN'
+
+        for i, item in enumerate(self.alphabet):
+            self.char2idx[item] = i + 3
+            self.idx2char[i+3] = item
+
+    def encode(self, text):
         """
         Args:
             text (str or list of str): texts to convert.
-
         Returns:
             torch.IntTensor targets:max_length × batch_size
         """
         if isinstance(text, str):
-            text = [self.dict[item] if item in self.dict else 2 for item in text]
-            return torch.tensor(text, device=device)
-        elif isinstance(text, collections.Iterable):
-            text = [self.encode(s, device) for s in text]
+            text = [self.char2idx[item] if item in self.char2idx else OOV_TOKEN for item in text]
+        elif isinstance(text, Iterable):
+            text = [self.encode(s) for s in text]
             max_length = max([len(x) for x in text])
-            nb = len(text)
-            targets = torch.ones(nb, max_length + 2, device=device, dtype=torch.long) * 2
+            nb = len(text)  # BATCH_SIZE
+            targets = torch.ones(nb, max_length + 2) * OOV_TOKEN
             for i in range(nb):
-                targets[i][0] = 0
+                targets[i][0] = SOS_TOKEN
                 targets[i][1:len(text[i]) + 1] = text[i]
-                targets[i][len(text[i]) + 1] = 1
+                targets[i][len(text[i]) + 1] = EOS_TOKEN
             text = targets.transpose(0, 1).contiguous()
-            return text.clone().detach()
+            text = text.long()
+        return torch.LongTensor(text)
 
-    def decode(self, t):
-        """Decode encoded texts back into strs.
+    def decode(self, ch):
+        """Decode encoded index of chars back into chars.
 
-        Args:
-            torch.IntTensor [length_0 + length_1 + ... length_{n - 1}]: encoded texts.
-            torch.IntTensor [n]: length of each text.
-
-        Raises:
-            AssertionError: when the texts and its length does not match.
-
-        Returns:
-            text (str or list of str): texts to convert.
         """
 
-        try:
-            # texts = list(self.dict.keys())[list(self.dict.values()).index(t)]
-            texts = self.alphabet[t - 3]
-        except Exception as e:
-            texts = '?'
-            raise e
-        return texts
+        # texts = list(self.char2idx.keys())[list(self.char2idx.values()).index(t)]
+        decoded_ch = self.idx2char[ch]
+        return decoded_ch
+
 
 class Averager(object):
     """Compute average for `torch.Variable` and `torch.Tensor`. """
@@ -114,28 +108,28 @@ def weights_init(model):
             nn.init.constant_(m.bias, 0)
 
 
+# def get_alphabet():
+#     y = list(',.0123456789-_|#')
+#     extra_ords = [8205, 8220, 8221, 43251, 7386, 8211, 183, 8216, 8217, 8212, 8226, 221, 209, 2965, 3006, 2985, 2792,
+#                   2798, 1040, 1041, 205, 173, 3585, 3594, 219, 65279, 216]
+#     extraChars = [chr(i) for i in range(32, 127)] + [chr(i) for i in extra_ords]
+#     CHARMAP = [' '] + [chr(i) for i in range(2304, 2432)] + y + extraChars
+#     return CHARMAP
+
+
 def get_alphabet():
-    y = list(',.0123456789-_|#')
-    extra_ords = [8205, 8220, 8221, 43251, 7386, 8211, 183, 8216, 8217, 8212, 8226, 221, 209, 2965, 3006, 2985, 2792,
-                  2798, 1040, 1041, 205, 173, 3585, 3594, 219, 65279, 216]
-    extraChars = [chr(i) for i in range(32, 127)] + [chr(i) for i in extra_ords]
-    CHARMAP = [' '] + [chr(i) for i in range(2304, 2432)] + y + extraChars
-    return CHARMAP
-
-
-def get_alphabet_from_file():
     with open('./data/devanagari-charset.txt', encoding="utf-8") as f:
         data = f.readlines()
         alphabet = [x.rstrip() for x in data]
-        # alphabet += ' '
+        alphabet += [' ']
         return alphabet
 
 
 def get_converted_word(decoder_outputs, get_prob=False):
     converter = ConvertBetweenStringAndLabel(get_alphabet())
     decoded_words = []
-    if get_prob:
-        prob = 1.0
+    # TODO: check dims of prob
+    prob = torch.tensor([1.0])
     for decoder_output in decoder_outputs:
         _, topi = decoder_output.data.topk(1)
         ni = topi.squeeze(1)
