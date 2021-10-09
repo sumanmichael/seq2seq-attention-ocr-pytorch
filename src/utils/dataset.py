@@ -12,7 +12,10 @@ class TextLineDataset(torch.utils.data.Dataset):
 
     def __init__(self, text_line_file=None, transform=None, target_transform=None):
         self.text_line_file = to_absolute_path(text_line_file)
-        self.root_dir = get_original_cwd()
+        try:
+            self.root_dir = get_original_cwd()
+        except ValueError:
+            self.root_dir = os.getcwd()
         with open(self.text_line_file, encoding="utf-8") as fp:
             self.lines = fp.readlines()
             self.nSamples = len(self.lines)

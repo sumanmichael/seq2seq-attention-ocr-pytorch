@@ -9,22 +9,20 @@ import torch.utils.data
 from src.modules.decoder import AttentionDecoder
 from src.modules.encoder import Encoder
 from src.utils import utils, dataset
-# load alphabet
-# with open('./data/devanagari-charset.txt', encoding="utf-8") as f:
-#     data = f.readlines()
-#     alphabet = [x.rstrip() for x in data]
-#     alphabet = ''.join(alphabet)
 from src.utils.utils import get_alphabet
+
+from pynvml import nvmlInit, nvmlDeviceGetMemoryInfo, nvmlDeviceGetHandleByIndex
 
 alphabet = get_alphabet()
 
-# define convert bwteen string and label index
+# define convert between string and label index
 converter = utils.ConvertBetweenStringAndLabel(alphabet)
 
 # len(alphabet) + SOS_TOKEN + EOS_TOKEN
-num_classes = len(alphabet) + 2
+num_classes = len(alphabet) + 3
 
-def train(image, text, encoder, decoder, criterion, train_loader, teach_forcing_prob=1):
+
+def train(train_loader, encoder, decoder, criterion, teach_forcing_prob=1):
     # optimizer
     encoder_optimizer = torch.optim.Adam(encoder.parameters(), lr=cfg.learning_rate, betas=(0.5, 0.999))
     decoder_optimizer = torch.optim.Adam(decoder.parameters(), lr=cfg.learning_rate, betas=(0.5, 0.999))
@@ -38,10 +36,8 @@ def train(image, text, encoder, decoder, criterion, train_loader, teach_forcing_
         decoder_param.requires_grad = True
     encoder.train()
     decoder.train()
-    from pynvml import nvmlInit, nvmlDeviceGetMemoryInfo, nvmlDeviceGetHandleByIndex
 
     nvmlInit()
-
 
     for epoch in range(cfg.num_epochs):
         train_iter = iter(train_loader)
@@ -55,14 +51,15 @@ def train(image, text, encoder, decoder, criterion, train_loader, teach_forcing_
             decoder.set_encoder_output(encoder_outputs)
             attention_context = torch.zeros((batch_size, cfg.hidden_size * 2), device="cuda:0")
 
-            target_variable = converter.encode(cpu_texts, "cuda:0")
+            target_variable = converter.encode(cpu_texts, "cpu")
             max_length = target_variable.shape[0]
 
-            decoder_input = utils.get_one_hot(torch.tensor([utils.SOS_TOKEN] * batch_size, device="cuda:0"), num_classes)
+            decoder_input = utils.get_one_hot(torch.tensor([utils.SOS_TOKEN] * batch_size, device="cuda:0"),
+                                              num_classes)
             teach_forcing = True if random.random() > teach_forcing_prob else False
 
             target_variable = target_variable.cuda()
-            
+
             loss = 0.0
 
             decoder_outputs = []
@@ -87,12 +84,16 @@ def train(image, text, encoder, decoder, criterion, train_loader, teach_forcing_
             encoder_optimizer.step()
             decoder_optimizer.step()
 
-
-
-
             if i % 10 == 0:
                 info = nvmlDeviceGetMemoryInfo(nvmlDeviceGetHandleByIndex(0))
-                print('[Epoch {0}/{1}] [Batch {2}/{3}] Loss: {4} | CUDA: {5:.2f}M/{6:.2f}M'.format(epoch, cfg.num_epochs, i, len(train_loader), loss_avg.val(),info.used/(1024*1024), info.total/(1024*1024)))
+                print(
+                    '[Epoch {0}/{1}] [Batch {2}/{3}] Loss: {4} | CUDA: {5:.2f}M/{6:.2f}M'.format(epoch, cfg.num_epochs,
+                                                                                                 i, len(train_loader),
+                                                                                                 loss_avg.val(),
+                                                                                                 info.used / (
+                                                                                                             1024 * 1024),
+                                                                                                 info.total / (
+                                                                                                             1024 * 1024)))
                 loss_avg.reset()
 
         # save checkpoint
@@ -113,8 +114,11 @@ def main():
         collate_fn=dataset.AlignCollate(img_height=cfg.img_height, img_width=cfg.img_width))
 
     # create test dataset
-    test_dataset = dataset.TextLineDataset(text_line_file=cfg.eval_list, transform=dataset.ResizeNormalize(img_width=cfg.img_width, img_height=cfg.img_height))
-    test_loader = torch.utils.data.DataLoader(test_dataset, shuffle=False, batch_size=1, num_workers=int(cfg.num_workers))
+    test_dataset = dataset.TextLineDataset(text_line_file=cfg.eval_list,
+                                           transform=dataset.ResizeNormalize(img_width=cfg.img_width,
+                                                                             img_height=cfg.img_height))
+    test_loader = torch.utils.data.DataLoader(test_dataset, shuffle=False, batch_size=1,
+                                              num_workers=int(cfg.num_workers))
 
     # create crnn/seq2seq/attention network
     encoder = Encoder(image_channels=1, enc_hidden_size=cfg.hidden_size)
@@ -145,20 +149,16 @@ def main():
         decoder.load_state_dict(torch.load(cfg.decoder))
 
     # create input tensor
-    image = torch.FloatTensor(cfg.batch_size, 3, cfg.img_height, cfg.img_width)
-    text = torch.LongTensor(cfg.batch_size)
 
     criterion = torch.nn.CrossEntropyLoss()
 
     assert torch.cuda.is_available(), "Please run \'train_pt.py\' script on nvidia cuda devices."
     encoder.cuda()
     decoder.cuda()
-    image = image.cuda()
-    text = text.cuda()
     criterion = criterion.cuda()
 
     # train crnn
-    train(image, text, encoder, decoder, criterion, train_loader, teach_forcing_prob=cfg.teaching_forcing_prob)
+    train(train_loader, encoder, decoder, criterion, teach_forcing_prob=cfg.teaching_forcing_prob)
 
     # do evaluation after training
     # evaluate(image, text, encoder, decoder, test_loader, max_eval_iter=100)
@@ -189,4 +189,3 @@ if __name__ == "__main__":
     print(cfg)
 
     main()
-
