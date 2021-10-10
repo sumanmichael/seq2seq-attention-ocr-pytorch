@@ -1,53 +1,91 @@
 import os.path
 import random
-
+import pyarrow as pa
 import numpy as np
 import torch
 import torchvision
 from PIL import Image
 from hydra.utils import to_absolute_path, get_original_cwd
+import lmdb
+import ast
+import io
 
 
 class TextLineDataset(torch.utils.data.Dataset):
 
-    def __init__(self, text_line_file=None, transform=None, target_transform=None):
-        self.text_line_file = to_absolute_path(text_line_file)
-        try:
-            self.root_dir = get_original_cwd()
-        except ValueError:
-            self.root_dir = os.getcwd()
-        with open(self.text_line_file, encoding="utf-8") as fp:
-            self.lines = fp.readlines()
-            self.nSamples = len(self.lines)
-
+    def __init__(self, root=None, transform=None, target_transform=None):
+        self.root = root
+        # self._env = None
+        self._nSamples = 0        
         self.transform = transform
         self.target_transform = target_transform
 
     def __len__(self):
+        
+    
+        if not self.env:
+            print(f'cannot creat lmdb from {self.root}')
+            sys.exit(0)
+        with self.env.begin(write=False) as txn:
+            nSamples = int(txn.get('num-samples'.encode('utf-8')))
+            self.nSamples = nSamples
         return self.nSamples
+        
+    @property
+    def nSamples(self):
+        return self._nSamples
+    
+    @nSamples.setter
+    def nSamples(self,value):
+        self._nSamples = value
+
+    
+    def get_env(self):
+        return lmdb.open(
+            self.root,
+            max_readers=5,
+            readonly=True,
+            lock=False,
+            readahead=False,
+            meminit=False)
+    
 
     def __getitem__(self, index):
         assert index <= len(self), 'index range error'
+        idx = index+1 # note that the lmdb indexing starts from 1
+        with self.env.begin(write=False) as txn:
+            img_key = 'image-%09d' % idx
+            label_key = 'label-%09d' % idx
 
-        line_splits = self.lines[index].strip().split(' ', 1)  # split on first occurrence of space
-        img_path = line_splits[0]
-        # TODO what if img_path is absolute?
-        img_path = os.path.join(self.root_dir, img_path)
-        try:
-            img = Image.open(img_path).convert('L')     #TODO Channel check
-        except IOError:
-            print('Corrupted image for %d' % index)
-            return self[index + 1]
+            imgbuf = txn.get(img_key.encode('utf-8'))
+            imgbuf = ast.literal_eval(imgbuf.decode())
+            buf = io.BytesIO()
+            buf.write(imgbuf)
+            buf.seek(0)
+            try:
+                img = Image.open(buf).convert('L')
+            except :
+                print('Corrupted image for %d' % index)
+                return self[index + 1]
+        #     label_key = 'label-%09d' % index
+            label = txn.get(label_key.encode('utf-8')).decode()
+     
 
         if self.transform is not None:
             img = self.transform(img)
 
-        label = line_splits[1]
 
         if self.target_transform is not None:
             label = self.target_transform(label)
-
+        
+        #ORD = lambda x : ''.join([str(ord(c)) for c in x])
+        #label = ORD(label)
         return img, label
+    @property
+    def env(self):
+        
+        return self.get_env()
+    
 
 
 class ResizeNormalize(object):
