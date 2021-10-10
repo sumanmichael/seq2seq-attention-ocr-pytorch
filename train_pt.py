@@ -84,7 +84,7 @@ def train(train_loader, encoder, decoder, criterion, teach_forcing_prob=1):
             encoder_optimizer.step()
             decoder_optimizer.step()
 
-            if i % 10 == 0:
+            if i % cf.log_interval == 0:
                 info = nvmlDeviceGetMemoryInfo(nvmlDeviceGetHandleByIndex(0))
                 print(
                     '[Epoch {0}/{1}] [Batch {2}/{3}] Loss: {4} | CUDA: {5:.2f}M/{6:.2f}M'.format(epoch, cfg.num_epochs,
@@ -107,16 +107,19 @@ def main():
         os.makedirs(cfg.model)
 
     # create train dataset
-    train_dataset = dataset.TextLineDataset(text_line_file=cfg.train_list, transform=None)
+    train_dataset = dataset.TextLineDataset(root=cfg.train_list, transform=None)
     sampler = dataset.RandomSequentialSampler(train_dataset, cfg.batch_size)
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=cfg.batch_size, shuffle=False, sampler=None, num_workers=int(cfg.num_workers),
         collate_fn=dataset.AlignCollate(img_height=cfg.img_height, img_width=cfg.img_width))
 
     # create test dataset
-    test_dataset = dataset.TextLineDataset(text_line_file=cfg.eval_list,
-                                           transform=dataset.ResizeNormalize(img_width=cfg.img_width,
-                                                                             img_height=cfg.img_height))
+    test_dataset = dataset.TextLineDataset(root=cfg.eval_list, transform=dataset.ResizeNormalize(
+                                                                                                    img_width=cfg.img_width, 
+                                                                                                    img_height=cfg.img_height
+                                                                                                )
+                                                                                            )
+
     test_loader = torch.utils.data.DataLoader(test_dataset, shuffle=False, batch_size=1,
                                               num_workers=int(cfg.num_workers))
 
@@ -171,12 +174,12 @@ if __name__ == "__main__":
     parser.add_argument('--train_list', type=str, help='path to train dataset list file')
     parser.add_argument('--eval_list', type=str, help='path to evalation dataset list file')
     parser.add_argument('--num_workers', type=int, default=4, help='number of data loading num_workers')
-    parser.add_argument('--batch_size', type=int, default=32, help='input batch size')
+    parser.add_argument('--batch_size', type=int, default=16, help='input batch size')
     parser.add_argument('--img_height', type=int, default=32, help='the height of the input image to network')
     parser.add_argument('--img_width', type=int, default=512, help='the width of the input image to network')
     parser.add_argument('--hidden_size', type=int, default=256, help='size of the lstm hidden state')
     parser.add_argument('--num_epochs', type=int, default=30, help='number of epochs to train for')
-    parser.add_argument('--learning_rate', type=float, default=0.0001, help='learning rate for Critic, default=0.00005')
+    parser.add_argument('--learning_rate', type=float, default=0.1, help='learning rate for Critic, default=0.00005')
     parser.add_argument('--encoder', type=str, default='', help="path to encoder (to continue training)")
     parser.add_argument('--decoder', type=str, default='', help='path to decoder (to continue training)')
     parser.add_argument('--model', default='./models/', help='Where to store samples and models')
@@ -185,6 +188,7 @@ if __name__ == "__main__":
     parser.add_argument('--teaching_forcing_prob', type=float, default=0.5, help='where to use teach forcing')
     parser.add_argument('--max_width', type=int, default=129, help='the width of the feature map out from cnn')
     parser.add_argument('--save_interval', type=int, default=50, help='save for every ___ epochs')
+    parser.add_argument('--log_interval', type=int, default=1000, help='log after every ___ iteration for each epoch.')
     cfg = parser.parse_args()
     print(cfg)
 
