@@ -53,7 +53,7 @@ class ConvertBetweenStringAndLabel(object):
                 targets[i][len(text[i]) + 1] = EOS_TOKEN
             text = targets.transpose(0, 1).contiguous()
             text = text.long()
-        return torch.LongTensor(text)
+        return torch.tensor(text, dtype=torch.long, device=device)
 
     def decode(self, ch):
         """Decode encoded index of chars back into chars.

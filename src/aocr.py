@@ -141,11 +141,12 @@ class OCR(pl.LightningModule):
         for di, decoder_output in enumerate(decoder_outputs, 1):
             loss += self.criterion(decoder_output, target_variable[di])
 
-        metrics = {
+        log_dict = {
             'train/loss': loss,
             # 'train_wer': self.wer(decoder_outputs, target_variable)   # batch WER?
         }
-        self.log_dict(metrics)
+        for k, v in log_dict.items():
+            self.logger.experiment[k].log(v)
         return loss
 
     def validation_step(self, val_batch, batch_idx, optimizer_idx=None):
@@ -163,7 +164,8 @@ class OCR(pl.LightningModule):
             'val/wer': self.wer(decoder_outputs, target_variable),
             'val/cer': self.cer(decoder_outputs, target_variable)
         }
-        self.log_dict(log_dict)
+        for k,v in log_dict.items():
+            self.logger.experiment[k].log(v)
         return loss
 
     def test_step(self, test_batch, batch_idx, optimizer_idx=None):
