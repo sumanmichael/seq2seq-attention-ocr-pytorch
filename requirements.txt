@@ -11,4 +11,4 @@ tensorboard-plugin-profile
 hydra-core
 wandb
 omegaconf
-pynvml
+neptune-client

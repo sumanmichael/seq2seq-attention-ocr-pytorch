@@ -11,7 +11,7 @@ from src.modules.encoder import Encoder
 from src.utils import utils, dataset
 from src.utils.utils import get_alphabet
 
-from pynvml import nvmlInit, nvmlDeviceGetMemoryInfo, nvmlDeviceGetHandleByIndex
+import neptune.new as neptune
 
 alphabet = get_alphabet()
 
@@ -22,7 +22,7 @@ converter = utils.ConvertBetweenStringAndLabel(alphabet)
 num_classes = len(alphabet) + 3
 
 
-def train(train_loader, encoder, decoder, criterion, teach_forcing_prob=1):
+def train(train_loader, encoder, decoder, criterion, logger, teach_forcing_prob=1):
     # optimizer
     encoder_optimizer = torch.optim.Adam(encoder.parameters(), lr=cfg.learning_rate, betas=(0.5, 0.999))
     decoder_optimizer = torch.optim.Adam(decoder.parameters(), lr=cfg.learning_rate, betas=(0.5, 0.999))
@@ -36,8 +36,6 @@ def train(train_loader, encoder, decoder, criterion, teach_forcing_prob=1):
         decoder_param.requires_grad = True
     encoder.train()
     decoder.train()
-
-    nvmlInit()
 
     for epoch in range(cfg.num_epochs):
         train_iter = iter(train_loader)
@@ -60,6 +58,7 @@ def train(train_loader, encoder, decoder, criterion, teach_forcing_prob=1):
 
             target_variable = target_variable.cuda()
 
+            # TODO: to tensor?
             loss = 0.0
 
             decoder_outputs = []
@@ -80,20 +79,15 @@ def train(train_loader, encoder, decoder, criterion, teach_forcing_prob=1):
             decoder.zero_grad()
             loss.backward()
             loss_avg.add(loss)
+            logger["train/loss"].log(loss.sum())
             del loss
             encoder_optimizer.step()
             decoder_optimizer.step()
 
             if i % 10 == 0:
-                info = nvmlDeviceGetMemoryInfo(nvmlDeviceGetHandleByIndex(0))
                 print(
-                    '[Epoch {0}/{1}] [Batch {2}/{3}] Loss: {4} | CUDA: {5:.2f}M/{6:.2f}M'.format(epoch, cfg.num_epochs,
-                                                                                                 i, len(train_loader),
-                                                                                                 loss_avg.val(),
-                                                                                                 info.used / (
-                                                                                                             1024 * 1024),
-                                                                                                 info.total / (
-                                                                                                             1024 * 1024)))
+                    '[Epoch {0}/{1}] [Batch {2}/{3}] Loss: {4} '.format(epoch, cfg.num_epochs, i, len(train_loader),
+                                                                                                 loss_avg.val()))
                 loss_avg.reset()
 
         # save checkpoint
@@ -105,6 +99,9 @@ def train(train_loader, encoder, decoder, criterion, teach_forcing_prob=1):
 def main():
     if not os.path.exists(cfg.model):
         os.makedirs(cfg.model)
+
+    run = neptune.init()
+
 
     # create train dataset
     train_dataset = dataset.TextLineDataset(text_line_file=cfg.train_list, transform=None)
@@ -158,11 +155,11 @@ def main():
     criterion = criterion.cuda()
 
     # train crnn
-    train(train_loader, encoder, decoder, criterion, teach_forcing_prob=cfg.teaching_forcing_prob)
+    train(train_loader, encoder, decoder, criterion, logger=run,teach_forcing_prob=cfg.teaching_forcing_prob)
 
     # do evaluation after training
     # evaluate(image, text, encoder, decoder, test_loader, max_eval_iter=100)
-
+    run.stop()
 
 if __name__ == "__main__":
     cudnn.benchmark = False
@@ -187,5 +184,6 @@ if __name__ == "__main__":
     parser.add_argument('--save_interval', type=int, default=50, help='save for every ___ epochs')
     cfg = parser.parse_args()
     print(cfg)
+
 
     main()
