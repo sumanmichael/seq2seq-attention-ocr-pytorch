@@ -147,6 +147,7 @@ class OCR(pl.LightningModule):
         }
         for k, v in log_dict.items():
             self.logger.experiment[k].log(v)
+        self.log_dict(log_dict)
         return loss
 
     def validation_step(self, val_batch, batch_idx, optimizer_idx=None):
@@ -166,6 +167,7 @@ class OCR(pl.LightningModule):
         }
         for k,v in log_dict.items():
             self.logger.experiment[k].log(v)
+        self.log_dict(log_dict)
         return loss
 
     def test_step(self, test_batch, batch_idx, optimizer_idx=None):
