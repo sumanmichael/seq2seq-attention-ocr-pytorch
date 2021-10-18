@@ -27,8 +27,6 @@ def train(train_loader, encoder, decoder, criterion, logger, teach_forcing_prob=
     encoder_optimizer = torch.optim.Adam(encoder.parameters(), lr=cfg.learning_rate, betas=(0.5, 0.999))
     decoder_optimizer = torch.optim.Adam(decoder.parameters(), lr=cfg.learning_rate, betas=(0.5, 0.999))
 
-    # loss averager
-    loss_avg = utils.Averager()
     num_classes = len(alphabet) + 3
 
     for encoder_param, decoder_param in zip(encoder.parameters(), decoder.parameters()):
@@ -58,15 +56,15 @@ def train(train_loader, encoder, decoder, criterion, logger, teach_forcing_prob=
 
             target_variable = target_variable.cuda()
 
-            # TODO: to tensor?
-            loss = 0.0
-
             decoder_outputs = []
 
             for di in range(1, max_length):
                 decoder_output, attention_context, state = decoder(decoder_input, attention_context, state)
                 decoder_outputs.append(decoder_output)
-                loss += criterion(decoder_output, target_variable[di])
+                if di == 1:
+                    loss = criterion(decoder_output, target_variable[di])
+                else:
+                    loss += criterion(decoder_output, target_variable[di])
                 if teach_forcing and di != max_length - 1:
                     decoder_input = utils.get_one_hot(target_variable[di], num_classes)
                 else:
@@ -78,18 +76,15 @@ def train(train_loader, encoder, decoder, criterion, logger, teach_forcing_prob=
             encoder.zero_grad()
             decoder.zero_grad()
             loss.backward()
-            loss_avg.add(loss)
-            logger["train/loss"].log(loss.sum())
+
+            logger["train/loss"].log(loss)
             del loss
             encoder_optimizer.step()
             decoder_optimizer.step()
 
             if i % 10 == 0:
                 print(
-                    '[Epoch {0}/{1}] [Batch {2}/{3}] Loss: {4} '.format(epoch, cfg.num_epochs, i, len(train_loader),
-                                                                                                 loss_avg.val()))
-                loss_avg.reset()
-
+                    '[Epoch {0}/{1}] [Batch {2}/{3}] '.format(epoch, cfg.num_epochs, i, len(train_loader)))
         # save checkpoint
         # if epoch % cfg.save_interval == 0:
         #     torch.save(encoder.state_dict(), '{0}/encoder_{1}.pth'.format(cfg.model, epoch))
