@@ -39,7 +39,7 @@ weights_save_path: null
 num_sanity_val_steps: 2
 truncated_bptt_steps: null
 resume_from_checkpoint: null
-profiler: pytorch
+profiler: null
 benchmark: false
 deterministic: false
 reload_dataloaders_every_n_epochs: 0

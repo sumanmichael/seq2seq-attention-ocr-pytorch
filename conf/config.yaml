@@ -1,6 +1,6 @@
 defaults:
   - trainer: default
-  - data: default
+  - data: ada
   - model: default
   - optim: default
   - logger: default
@@ -11,3 +11,14 @@ defaults:
 hydra:
   run:
     dir: .
+
+trainer:
+  gpus: 1
+  profiler: null
+  progress_bar_refresh_rate: 10
+  benchmark: true
+
+data:
+  batch_size: 32
+  num_workers: 1
+  random_sampler: false

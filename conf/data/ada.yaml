@@ -1,0 +1,5 @@
+defaults:
+  - default
+
+train_list: /ssd_scratch/cvit/sumanmichael/annotation_txt_files/c1_10l.txt
+val_list: /ssd_scratch/cvit/sumanmichael/annotation_txt_files/val.txt

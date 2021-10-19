@@ -94,7 +94,7 @@ class AttentionDecoder(pl.LightningModule):
         # TODO: COMPLETED
         attention_context, attention_weights = self.attention(state_flat)
         # moving to cpu to prevent bloating in GPU
-        self.attention_weights_history.append(attention_weights.detach().to("cpu"))
+        # self.attention_weights_history.append(attention_weights.detach().to("cpu"))
 
         cell_output = cell_output.permute(1, 0, 2)
         out_proj_inp = torch.cat((cell_output, attention_context), dim=2)

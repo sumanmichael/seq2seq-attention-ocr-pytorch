@@ -145,8 +145,6 @@ class OCR(pl.LightningModule):
             'train/loss': loss,
             # 'train_wer': self.wer(decoder_outputs, target_variable)   # batch WER?
         }
-        for k, v in log_dict.items():
-            self.logger.experiment[k].log(v)
         self.log_dict(log_dict)
         return loss
 
@@ -165,8 +163,6 @@ class OCR(pl.LightningModule):
             'val/wer': self.wer(decoder_outputs, target_variable),
             'val/cer': self.cer(decoder_outputs, target_variable)
         }
-        for k,v in log_dict.items():
-            self.logger.experiment[k].log(v)
         self.log_dict(log_dict)
         return loss
 

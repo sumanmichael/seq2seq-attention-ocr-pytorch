@@ -11,6 +11,7 @@ from src.modules.encoder import Encoder
 from src.utils import utils, dataset
 from src.utils.utils import get_alphabet
 
+import dotenv; dotenv.load_dotenv()
 import neptune.new as neptune
 
 alphabet = get_alphabet()
@@ -37,7 +38,6 @@ def train(train_loader, encoder, decoder, criterion, logger, teach_forcing_prob=
 
     for epoch in range(cfg.num_epochs):
         train_iter = iter(train_loader)
-
         for i in range(len(train_loader)):
             cpu_images, cpu_texts = train_iter.next()
             batch_size = cpu_images.size(0)
@@ -56,11 +56,8 @@ def train(train_loader, encoder, decoder, criterion, logger, teach_forcing_prob=
 
             target_variable = target_variable.cuda()
 
-            decoder_outputs = []
-
             for di in range(1, max_length):
                 decoder_output, attention_context, state = decoder(decoder_input, attention_context, state)
-                decoder_outputs.append(decoder_output)
                 if di == 1:
                     loss = criterion(decoder_output, target_variable[di])
                 else:
@@ -69,6 +66,7 @@ def train(train_loader, encoder, decoder, criterion, logger, teach_forcing_prob=
                     decoder_input = utils.get_one_hot(target_variable[di], num_classes)
                 else:
                     _, topi = decoder_output.data.topk(1)
+                    del decoder_output
                     topi = topi.detach()
                     ni = topi.T[0]
                     decoder_input = utils.get_one_hot(ni, num_classes)
@@ -77,8 +75,7 @@ def train(train_loader, encoder, decoder, criterion, logger, teach_forcing_prob=
             decoder.zero_grad()
             loss.backward()
 
-            logger["train/loss"].log(loss)
-            del loss
+            logger["train/loss"].log(loss.item())
             encoder_optimizer.step()
             decoder_optimizer.step()
 
