@@ -1,2 +1,3 @@
 monitor: val/loss
 patience: 5
+verbose: true

@@ -1,3 +1,5 @@
 monitor: val/loss
-filename: aocr-epoch{epoch:02d}-val_loss{val/loss:.2f}
+filename: aocr-epoch{epoch:02d}-step{step}-val_loss{val/loss:.2f}
 auto_insert_metric_name: false
+save_on_train_epoch_end: false
+verbose: true
