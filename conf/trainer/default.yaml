@@ -18,7 +18,7 @@ overfit_batches: 0.0
 track_grad_norm: -1
 check_val_every_n_epoch: 1
 fast_dev_run: false
-accumulate_grad_batches: 4
+accumulate_grad_batches: 1
 max_epochs: null
 min_epochs: null
 max_steps: null
