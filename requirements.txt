@@ -12,3 +12,4 @@ hydra-core
 wandb
 omegaconf
 neptune-client
+python-dotenv
