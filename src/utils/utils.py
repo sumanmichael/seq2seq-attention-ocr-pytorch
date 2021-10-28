@@ -87,11 +87,17 @@ def weights_init(model):
 #     return CHARMAP
 
 
-def get_alphabet():
+def get_alphabet_devanagari():
     with open('./data/devanagari-charset.txt', encoding="utf-8") as f:
         data = f.readlines()
         alphabet = [x.rstrip() for x in data]
         alphabet += [' ']
+        return alphabet
+
+def get_alphabet():
+    with open('./data/num0to9.txt', encoding="utf-8") as f:
+        data = f.readlines()
+        alphabet = [x.rstrip() for x in data]
         return alphabet
 
 

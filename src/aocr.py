@@ -58,7 +58,7 @@ class OCR(pl.LightningModule):
         self.output_pred_path = output_pred_path
 
         self.alphabet = utils.get_alphabet()
-        self.num_classes = len(self.alphabet) + 3  # len(alphabet) + 0 + SOS_TOKEN + EOS_TOKEN
+        self.num_classes = len(self.alphabet) + 3  # len(alphabet) + SOS_TOKEN + EOS_TOKEN + OOV_TOKEN
 
         self.encoder = Encoder(image_channels=1, enc_hidden_size=self.enc_hidden_size)
         self.decoder = AttentionDecoder(
